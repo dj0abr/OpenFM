@@ -25,3 +25,6 @@ echo "MariaDB initialized."
 
 # Service
 sudo install -m 644 fmparser.service /etc/systemd/system/fmparser.service
+sudo systemctl daemon-reload
+sudo systemctl enable fmparser.service
+sudo systemctl start fmparser.service
