@@ -1,0 +1,213 @@
+TG 1,MultiRegio (DL-Repeater exklusiv)
+TG 2,CQ CQ All > No QSO > PSE QSY
+TG 7,Lausitzlink
+TG 8,Local Quasselstrippe
+TG 9,Local Talk
+TG 10,10m KW
+TG 20,Test Area
+TG 25,Quatsche Box
+TG 28,Schleswig-Holstein Süd
+TG 35,Marburg
+TG 37,OV X37 (excl. TG)
+TG 42,NL24
+TG 39,Herzogtum Lauenburg
+TG 66,Admin Büro *
+TG 69,Rhein Main Link
+TG 77,Sysop Talk only *
+TG 80,bitte ändere die TG80 nach 2620
+TG 81,bitte ändere die TG81 nach 2621
+TG 82,bitte ändere die TG82 nach 2622
+TG 83,bitte ändere die TG83 nach 2623
+TG 84,bitte ändere die TG84 nach 2624
+TG 85,bitte ändere die TG85 nach 2625
+TG 86,bitte ändere die TG86 nach 2626
+TG 87,bitte ändere die TG87 nach 2627
+TG 88,bitte ändere die TG88 nach 2628
+TG 89,Thüringen Lokal
+TG 91,TG Worldwide
+TG 92,TG Europa
+TG 98,Erfurt City
+TG 99,Weimar City
+TG 204,Niederlande
+TG 232,Austria (TG Sharing)
+TG 235,UK (TG Sharing)
+TG 240,Schweden (TG Sharing)
+TG 260,Polen (TG Sharing)
+TG 262,Deutschland (TG Sharing)
+TG 263,Tetra (TG-Sharing)
+TG 264,Interlink DL1BH
+TG 311,DMR/C4FM Bridge XLX311
+TG 599,CW Only
+TG 666,Jens`s VIP Lounge
+TG 750,ATV Anruf
+TG 777,MultiRegioLink
+TG 880,Region Garmisch Partenkirchen
+TG 882,Region München
+TG 886,Taiwan
+TG 888,Oberbayern
+TG 924,Nordic (SM)
+TG 985,Region Suhl
+TG 945,XLX945 DV Bridge
+TG 975,XLX975 DMR/C4FM Bridge
+TG 986,XLX986 DMR/C4FM Bridge
+TG 1000,Rundspruch Allgemein
+TG 1080,Nord-Ostsee Rundspruch
+TG 1084,Koeln-Aachen Rundspruch
+TG 1089,Thüringen Rundspruch
+TG 1262,Deutschland Rundspruch
+TG 2280,Schweiz
+TG 2321,OE1 Wien
+TG 2322,OE2 Salzburg
+TG 2323,OE3 Niederösterreich
+TG 2324,OE4 Burgenland
+TG 2325,OE5 Oberösterreich
+TG 2326,OE6 Steiermarkt
+TG 2327,OE7 Tirol
+TG 2328,OE8 Kärnten
+TG 2329,OE9 Vorarlberg
+TG 2405,SM5
+TG 2407,SM7
+TG 2590,OV V4 Ribnitz-Damgarten
+TG 2620,Mecklenburg-Vorpommern
+TG 2621,Berlin Brandenburg
+TG 2622,Hamburg / Schleswig-Holstein
+TG 2623,Niedersachsen / Bremen
+TG 26231,Bremen Regional
+TG 2624,Nordrhein-Westfalen
+TG 26241,Nrw Talk
+TG 2625,Rheinland-Pfalz / Saarland
+TG 2626,Hessen
+TG 2627,Baden-Württemberg
+TG 2628,Bayern
+TG 2629,Thüringen / Sachsen
+TG 3720,CONVENIAT
+TG 4711,Kölsche Talk
+TG 6000,Trautmannshofen
+TG 6213,Local
+TG 7426,Region Ilmenau / Königsee
+TG 7777,Sysop Talk only
+TG 9111,TG9111 Notfunk
+TG 9112,TG9112 EMCOM EU
+TG 9990,E C H O T E S T
+TG 10249,Berlin Friedrichshain
+TG 13055,Berlin Hohenschönhausen
+TG 14774,Region Brandenburg a.d. Havel
+TG 14806,Region Bad Belzig
+TG 17033,Region Neubrandenburg
+TG 17309,Region Pasewalk
+TG 17335,Region Strasburg MV
+TG 17373,Region Ueckermünde
+TG 17491,Region Hansestadt Greifswald
+TG 18055,Region Rostock
+TG 18311,Region Ribnitz Damgarten
+TG 18435,Region Stralsund
+TG 18507,Region Grimmen
+TG 18528,Region Rügen
+TG 19055,Region Schwerin
+TG 19348,Region Perleberg
+TG 19395,Region Plau am See
+TG 23552,Hansestadt Lübeck
+TG 23526,Hubnet UK
+TG 23743,Grömitz
+TG 23758,Region Hohwachter Bucht
+TG 23795,Region Bad Segeberg
+TG 23966,Region Wismar
+TG 24109,Region Kiel
+TG 26212,Berlin City
+TG 26206,Region Dessau
+TG 26207,Sachsen Anhalt
+TG 26208,Verbund KWD
+TG 26221,Hamburg City
+TG 26223,Chaos Computer Club
+TG 26232,DL-Mitte Hessen Thüringen Niedersachsen
+TG 26234,Dümmer-Weser-Wiehenregion
+TG 26235,"Südheide,NI"
+TG 26243,Ruhrgebiet
+TG 26244,Region Dortmund
+TG 26247,Velbert
+TG 26248,Mülheim
+TG 26251,Zweibrücken Local
+TG 26253,Region Westpfalz
+TG 26257,Siegerland
+TG 26262,Region Mittelhessen
+TG 26264,Region Odenwald
+TG 26265,Region Taunus
+TG 26266,Notfunk Vogelsbergkreis
+TG 26267,Südhessen
+TG 26268,SHRG
+TG 26269,Hessen / RLP
+TG 26277,Schwarzwald
+TG 26278,Region Ulm
+TG 26284,Region Franken
+TG 26285,Region Oberbayern
+TG 26288,Region Ingolstadt
+TG 26289,Region Wendelstein
+TG 26298,Thüringen
+TG 26322,OV D22
+TG 26379,Region Hochrhein
+TG 26390,Region Neumarkt
+TG 26348,Westmünsterland
+TG 26349,Sauerland
+TG 26385,Jura
+TG 26391,Oberfranken
+TG 26395,Raute
+TG 26426,DL-Nordwest Digital
+TG 26447,Ostwestfalen
+TG 31061,Alfeld (Leine)
+TG 31868,Weserbergland
+TG 31582,Region Nienburg / Weser
+TG 31787,Region Hameln / Weser
+TG 34497,Korbach / Goldhausen
+TG 37574,Bierstadt Talk Einbeck
+TG 37671,Region Höxter
+TG 38855,Stadt Wernigerode / Harz
+TG 38644,Region Harz
+TG 39576,Region Stendal
+TG 39590,Region Altmark
+TG 40670,"Region Meerbusch,NRW"
+TG 41515,"Region Grevenbroich, NRW"
+TG 42929,Rheinisch Bergischer Kreis
+TG 45699,Herten City
+TG 48282,Emsdetten
+TG 56075,Region Koblenz
+TG 56479,Region Westerwald
+TG 56566,Region Neuwied am Rhein
+TG 56593,Region Altenkirchen Westerwald
+TG 58256,Region Ennepetal
+TG 59368,Region Werne NRW
+TG 59555,Region Lippstadt/Westf
+TG 59597,Region Soester Börde
+TG 63739,Region Aschaffenburg
+TG 65075,Ramses
+TG 74253,Klönschnack LK-Diepholz-NDS
+TG 74889,Region Kraichgau
+TG 88046,Hamradio Friedrichshafen
+TG 90710,JOTA (DACH)
+TG 91177,Region Thalmässing
+TG 92360,Region Mühlhausen
+TG 97475,Region Haßberge
+TG 98529,Region Suhl
+TG 98617,Meiningen City
+TG 262004,Halle City
+TG 262038,Region Herne
+TG 262103,Netlink Berlin
+TG 262311,Bremen-Nord
+TG 262649,OV Welle F49 Frankfurt West
+TG 262681,SHRG-1
+TG 262682,SHRG-2
+TG 262683,SHRG-3
+TG 262684,SHRG-4
+TG 262690,XLX Test Area FFM
+TG 262757,Region Altmühltal
+TG 262841,Region Mainfranken
+TG 262842,Region Roth
+TG 262872,Region Amberg
+TG 262907,Oberlausitz
+TG 263815,Funkerportal
+TG 264022,White Sticker
+TG 2405174,SM5GXQ Group
+TG 816851,OberLausitzLink TAC1
+TG 969258,Lokal DB0ZOD
+TG 1305510,DB0BLO 10m
+TG 2629004,Admin TG DJ1JAY
+TG 0,;-)

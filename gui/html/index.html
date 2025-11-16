@@ -1,0 +1,602 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <title>OpenFM FM-Funknetz</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta http-equiv="Cache-Control" content="no-store, must-revalidate" />
+
+    <style>
+      :root {
+        --bg: #0b0c10;
+        --fg: #eaf0f1;
+        --muted: #9aa3a7;
+        --border: #1a1f24;
+        --tile: #222831;
+        --tile-alt: #1d232c;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        color: var(--fg);
+        background: linear-gradient(180deg, #0b0c10, #0f1419 260px);
+        font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, "Open Sans",
+          "Helvetica Neue", Arial, sans-serif;
+      }
+
+      header {
+        position: sticky;
+        top: 0;
+        backdrop-filter: blur(8px);
+        background: #0006;
+        border-bottom: 1px solid var(--border);
+        padding: 18px 20px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        flex-direction: column;
+        text-align: center;
+      }
+
+      header h1 {
+        margin: 0;
+        font-size: 28px;
+        letter-spacing: 0.2px;
+        text-align: center;
+      }
+
+      main {
+        max-width: 980px;
+        margin: 0 auto;
+        padding: 20px;
+      }
+
+      .subline {
+        font-size: 14px;
+        color: var(--muted);
+        margin-top: 4px;
+        letter-spacing: 0.3px;
+        text-align: center;
+        line-height: 1.4;
+      }
+
+      .setup-btn {
+        position: absolute;
+        top: 12px;
+        right: 14px;
+        display: inline-block;
+        padding: 6px 10px;
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--fg);
+        background: var(--tile-alt);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        text-decoration: none;
+        box-shadow: 0 1px 0 #0004 inset;
+        transition: transform 0.08s ease, background-color 0.15s ease,
+          border-color 0.15s ease;
+      }
+
+      .setup-btn:hover {
+        background: #2a3038;
+        border-color: #2b333b;
+      }
+
+      .setup-btn:active {
+        transform: translateY(1px);
+      }
+
+      .setup-btn:focus-visible {
+        outline: 2px solid #acf8ff;
+        outline-offset: 2px;
+      }
+
+      .tile {
+        background: var(--tile);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 16px 18px;
+        box-shadow: 0 1px 0 #0004 inset;
+        margin-bottom: 16px;
+      }
+
+      .tile h2 {
+        margin: 0 0 8px 0;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        color: var(--muted);
+      }
+
+      .badge {
+        display: inline-block;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        padding: 2px 8px;
+        font-size: 12px;
+        color: var(--muted);
+        background: var(--tile-alt);
+      }
+
+      ul.fm-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+      }
+
+      .fm-item {
+        display: grid;
+        /* CS | Location | Time | TG-Nummer | TG-Label */
+        grid-template-columns: 1fr 2fr 2fr 0.8fr 1.2fr;
+        gap: 10px;
+        align-items: center;
+        padding: 8px 0;
+        border-bottom: 1px dashed #1f2327;
+      }
+
+      .fm-tg-label {
+        font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, "Open Sans",
+          "Helvetica Neue", Arial, sans-serif;
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .fm-item:last-child {
+        border-bottom: 0;
+      }
+
+      .fm-cs {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono",
+          monospace;
+        font-weight: 700;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .fm-time {
+        color: var(--muted);
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono",
+          monospace;
+        font-size: 14px;
+      }
+
+      .fm-tg {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono",
+          monospace;
+        text-align: right;
+        font-size: 14px;
+      }
+
+      .flag {
+        height: 16px;
+        border-radius: 3px;
+        box-shadow: 0 0 3px #0006;
+      }
+
+      a.fm-cs-link {
+        color: inherit;
+        text-decoration: none;
+      }
+
+      a.fm-cs-link:hover {
+        text-decoration: underline;
+      }
+
+      footer {
+        text-align: center;
+        color: var(--muted);
+        font-size: 12px;
+        padding: 14px;
+      }
+
+      .active-tile {
+        background: #b00020;
+        border-color: #e5484d;
+        box-shadow: 0 0 24px #e5484d33 inset;
+      }
+
+      .fm-location {
+        font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, "Open Sans",
+          "Helvetica Neue", Arial, sans-serif;
+        font-size: 12px;
+        color: var(--muted);
+        /* margin-left fällt weg, weil eigene Spalte */
+      }
+    </style>
+  </head>
+
+  <body>
+    <header>
+      <a href="setup.html" class="setup-btn" aria-label="Setup" target="_blank">⚙️ Setup</a>
+      <div>
+        <h1 id="title">OpenFM FM-Funknetz</h1>
+        <div class="subline" id="subline">
+          OpenFM by DJ0ABR (SVXlink by SM0SVX, FM-Funknetz by DJ1JAY) RX – TX –
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <!-- TILE 1: ACTIVE STATIONS -->
+      <section class="tile" id="activeTile">
+        <h2>ACTIVE STATIONS <span class="badge" id="activeCount">0</span></h2>
+        <ul id="activeList" class="fm-list"></ul>
+      </section>
+
+      <!-- TILE 2: LAST HEARD -->
+      <section class="tile">
+        <h2>LAST HEARD <span class="badge" id="lhCount">0</span></h2>
+        <ul id="lhList" class="fm-list"></ul>
+      </section>
+    </main>
+
+<footer>
+  Live monitoring of the FM-Funknetz. Updated periodically.<br />
+  SVXLink by SM0SVX<br />
+  FM-Funknetz by DJ1JAY<br />
+  OpenFM by DJ0ABR<br />
+  External links (e.g., to qrz.com) open in a new window. Their privacy policy applies.
+</footer>
+
+    <script>
+      // --- helpers -----------------------------------------------------------
+
+      // --- Talkgroup-Name Cache ---------------------------------------------
+      let tgNames = null; // Map: tgNum (String) -> Label
+
+      function tgLabel(tg) {
+        if (!tgNames) return null;
+        if (tg == null) return null;
+        const key = String(tg);
+        return tgNames[key] || null;
+      }
+
+      async function loadTalkgroupNames() {
+        if (tgNames !== null) return; // schon geladen
+
+        tgNames = {}; // leeres Map vorbereiten
+
+        try {
+          const r = await fetch("talkgroups.csv", { cache: "no-store" });
+          if (!r.ok) throw new Error(r.status + " " + r.statusText);
+          const txt = await r.text();
+
+          txt.split(/\r?\n/).forEach((line) => {
+            const l = line.trim();
+            if (!l) return;
+            const idx = l.indexOf(",");
+            if (idx <= 0) return;
+
+            const left = l.slice(0, idx).trim();   // z.B. "TG 1"
+            const right = l.slice(idx + 1).trim(); // z.B. "MultiRegio ..."
+
+            const m = left.match(/(\d+)/);
+            if (!m) return;
+            const tgNum = m[1]; // "1"
+
+            tgNames[tgNum] = right;
+          });
+
+          // nach dem Laden direkt FM-Listen neu holen, damit Labels sofort sichtbar sind
+          loadFmStatus();
+          loadFmLastHeard();
+        } catch (e) {
+          console.error("talkgroups.csv load error:", e);
+        }
+      }
+
+      // Normalize callsign formatting.
+      function sanitizeCallsign(cs) {
+        return (cs || "").toUpperCase().replace(/[^A-Z0-9-]/g, "");
+      }
+
+      // Build QRZ link from callsign.
+      function linkQRZ(cs) {
+        // sanitize & uppercase
+        let c = sanitizeCallsign(cs);
+
+        // alles hinter dem ersten "-" abschneiden (DB0ABC-10 -> DB0ABC)
+        const dashPos = c.indexOf("-");
+        if (dashPos > 0) {
+          c = c.substring(0, dashPos);
+        }
+
+        return "https://www.qrz.com/db/" + encodeURIComponent(c);
+      }
+
+      // Format frequency in Hz as MHz text.
+      function fmtMHz(hz) {
+        const n = Number(hz);
+        if (!isFinite(n) || n <= 0) return "–";
+        return (n / 1e6).toFixed(3) + " MHz";
+      }
+
+      // Format MySQL datetime to DD.MM.YYYY HH:MM:SS.
+      /*function fmtTimeMysql(ts) {
+        if (!ts) return "–";
+        const d = new Date(ts.replace(" ", "T"));
+        if (isNaN(d)) return ts;
+        const pad = (n) => String(n).padStart(2, "0");
+        const datum = pad(d.getDate()) + "." + pad(d.getMonth() + 1) + "." + d.getFullYear();
+        const zeit =
+          pad(d.getHours()) + ":" + pad(d.getMinutes()) + ":" + pad(d.getSeconds());
+        return datum + " " + zeit;
+      }*/
+
+      function fmtTimeMysql(ts) {
+        if (!ts) return "–";
+        const d = new Date(ts.replace(" ", "T"));
+        if (isNaN(d)) return ts;
+        const pad = (n) => String(n).padStart(2, "0");
+        const datum = pad(d.getDate()) + "." + pad(d.getMonth() + 1);
+        const zeit =
+          pad(d.getHours()) + ":" + pad(d.getMinutes()) + ":" + pad(d.getSeconds());
+        return datum + " " + zeit;
+      }
+
+      // Apply header title based on localconfig.
+      function applyLocalHeader(cfg) {
+        const h1 = document.getElementById("title");
+        if (!h1 || !cfg) return;
+
+        const cs = sanitizeCallsign(cfg.callsign || "");
+        if (!cs) return;
+
+        const role = Number(cfg.duplex) === 1 ? "Repeater" : "Station";
+        h1.textContent = cs + " OpenFM FM-Funknetz " + role + " V1.0";
+      }
+
+      // Apply subline with RX/TX frequency.
+      function applySubline(cfg) {
+        const sub = document.getElementById("subline");
+        if (!sub || !cfg) return;
+        const rx = fmtMHz(cfg.rxfreq);
+        const tx = fmtMHz(cfg.txfreq);
+        sub.textContent =
+          "OpenFM by DJ0ABR (SVXlink by SM0SVX) RX " + rx + " TX " + tx;
+      }
+
+      // --- render functions --------------------------------------------------
+
+      // Render list for LAST HEARD.
+      function renderFmLastHeard(rows) {
+        const list = document.getElementById("lhList");
+        const badge = document.getElementById("lhCount");
+        list.innerHTML = "";
+
+        if (!Array.isArray(rows) || rows.length === 0) {
+          badge.textContent = "0";
+          const li = document.createElement("li");
+          li.className = "fm-item";
+          li.innerHTML =
+            '<span class="fm-cs">–</span>' +
+            '<span class="fm-location">–</span>' +
+            '<span class="fm-time">–</span>' +
+            '<span class="fm-tg">–</span>' +
+            '<span class="fm-tg-label">–</span>';
+          list.appendChild(li);
+          return;
+        }
+
+        badge.textContent = rows.length.toString();
+
+        rows.forEach((r) => {
+          const li = document.createElement("li");
+          li.className = "fm-item";
+
+          // Callsign + Flag
+          const csWrap = document.createElement("a");
+          csWrap.className = "fm-cs-link";
+          csWrap.href = linkQRZ(r.callsign);
+          csWrap.target = "_blank";
+          csWrap.rel = "noopener noreferrer";
+
+          const csSpan = document.createElement("span");
+          csSpan.className = "fm-cs";
+
+          if (r.country_code) {
+            const flag = document.createElement("img");
+            flag.className = "flag";
+            flag.src = "/flags/" + r.country_code + ".png";
+            flag.alt = r.country_code;
+            csSpan.appendChild(flag);
+          }
+
+          csSpan.appendChild(
+            document.createTextNode(sanitizeCallsign(r.callsign || "–"))
+          );
+          csWrap.appendChild(csSpan);
+
+          // Location-Spalte
+          const locSpan = document.createElement("span");
+          locSpan.className = "fm-location";
+          locSpan.textContent = r.location || "–";
+
+          // Zeit + Dauer
+          const timeSpan = document.createElement("span");
+          timeSpan.className = "fm-time";
+
+          const timeText = fmtTimeMysql(r.event_time);
+          let durText = "";
+
+          if (r.duration_s != null && !isNaN(Number(r.duration_s))) {
+            durText = " [" + Number(r.duration_s).toString() + " s]";
+          }
+
+          timeSpan.textContent = timeText + durText;
+
+          // TG-Nummer
+          const tgSpan = document.createElement("span");
+          tgSpan.className = "fm-tg";
+          tgSpan.textContent = r.tg != null ? "TG " + r.tg : "TG –";
+
+          // TG-Label
+          const tgLabelSpan = document.createElement("span");
+          tgLabelSpan.className = "fm-tg-label";
+
+          const rawLabel = tgLabel(r.tg);
+          if (rawLabel) {
+            let text = rawLabel.replace(/\bRegion\b/gi, "").replace(/\s{2,}/g, " ").trim();
+            tgLabelSpan.textContent = text || "–";
+          } else {
+            tgLabelSpan.textContent = "–";
+          }
+
+          li.appendChild(csWrap);      // Callsign + Flag
+          li.appendChild(locSpan);     // Location
+          li.appendChild(timeSpan);    // Zeit + [Dauer]
+          li.appendChild(tgSpan);      // TG-Nummer
+          li.appendChild(tgLabelSpan); // TG-Label
+          list.appendChild(li);
+        });
+      }
+
+
+      // Render list for ACTIVE STATIONS.
+      function renderFmStatus(rows) {
+        const list = document.getElementById("activeList");
+        const badge = document.getElementById("activeCount");
+        const tile = document.getElementById("activeTile");
+        list.innerHTML = "";
+
+        if (!Array.isArray(rows) || rows.length === 0) {
+          badge.textContent = "0";
+          if (tile) tile.classList.remove("active-tile");
+
+          const li = document.createElement("li");
+          li.className = "fm-item";
+          li.innerHTML =
+            '<span class="fm-cs">–</span>' +
+            '<span class="fm-location">–</span>' +
+            '<span class="fm-time">–</span>' +
+            '<span class="fm-tg">–</span>' +
+            '<span class="fm-tg-label">–</span>';
+          list.appendChild(li);
+          return;
+        }
+
+        badge.textContent = rows.length.toString();
+        if (tile) tile.classList.add("active-tile");
+
+        rows.forEach((r) => {
+          const li = document.createElement("li");
+          li.className = "fm-item";
+
+          // Callsign + Flag
+          const csWrap = document.createElement("a");
+          csWrap.className = "fm-cs-link";
+          csWrap.href = linkQRZ(r.callsign);
+          csWrap.target = "_blank";
+          csWrap.rel = "noopener noreferrer";
+
+          const csSpan = document.createElement("span");
+          csSpan.className = "fm-cs";
+
+          if (r.country_code) {
+            const flag = document.createElement("img");
+            flag.className = "flag";
+            flag.src = "/flags/" + r.country_code + ".png";
+            flag.alt = r.country_code;
+            csSpan.appendChild(flag);
+          }
+
+          csSpan.appendChild(
+            document.createTextNode(sanitizeCallsign(r.callsign || "–"))
+          );
+          csWrap.appendChild(csSpan);
+
+          // Location-Spalte
+          const locSpan = document.createElement("span");
+          locSpan.className = "fm-location";
+          locSpan.textContent = r.location || "–";
+
+          // Zeit-Spalte
+          const timeSpan = document.createElement("span");
+          timeSpan.className = "fm-time";
+          timeSpan.textContent = fmtTimeMysql(r.event_time);
+
+          // TG-Nummer
+          const tgSpan = document.createElement("span");
+          tgSpan.className = "fm-tg";
+          tgSpan.textContent = r.tg != null ? "TG " + r.tg : "TG –";
+
+          // TG-Label (Bezeichnung) in eigener Spalte
+          const tgLabelSpan = document.createElement("span");
+          tgLabelSpan.className = "fm-tg-label";
+
+          const rawLabel = tgLabel(r.tg); // aus talkgroups.csv
+          if (rawLabel) {
+            // Wort "Region" entfernen, Rest nutzen
+            let text = rawLabel.replace(/\bRegion\b/gi, "").replace(/\s{2,}/g, " ").trim();
+            tgLabelSpan.textContent = text || "–";
+          } else {
+            tgLabelSpan.textContent = "–";
+          }
+
+          // Reihenfolge der Spalten
+          li.appendChild(csWrap);    // Callsign + Flag
+          li.appendChild(locSpan);   // Location
+          li.appendChild(timeSpan);  // Zeit
+          li.appendChild(tgSpan);    // "TG 1"
+          li.appendChild(tgLabelSpan); // "Multi…"
+          list.appendChild(li);
+        });
+      }
+
+      // --- loading functions -------------------------------------------------
+
+      async function loadLocalConfig() {
+        try {
+          const r = await fetch("api.php?q=localconfig", { cache: "no-store" });
+          if (!r.ok) throw new Error(r.status + " " + r.statusText);
+          const cfg = await r.json();
+          applyLocalHeader(cfg || {});
+          applySubline(cfg || {});
+        } catch (e) {
+          console.error(e);
+        }
+      }
+
+      async function loadFmStatus() {
+        try {
+          const r = await fetch("api.php?q=fmstatus", { cache: "no-store" });
+          if (!r.ok) throw new Error(r.status + " " + r.statusText);
+          const rows = await r.json();
+          renderFmStatus(Array.isArray(rows) ? rows : []);
+        } catch (e) {
+          console.error(e);
+        }
+      }
+
+      async function loadFmLastHeard() {
+        try {
+          const r = await fetch("api.php?q=fmlastheard", { cache: "no-store" });
+          if (!r.ok) throw new Error(r.status + " " + r.statusText);
+          const rows = await r.json();
+          // API should already filter talk='stop', otherwise filter here:
+          // const filtered = (Array.isArray(rows) ? rows : []).filter(x => x.talk === 'stop');
+          renderFmLastHeard(Array.isArray(rows) ? rows : []);
+        } catch (e) {
+          console.error(e);
+        }
+      }
+
+      // --- init --------------------------------------------------------------
+
+      loadTalkgroupNames();
+      loadLocalConfig();
+      loadFmStatus();
+      loadFmLastHeard();
+
+      // periodic refresh
+      setInterval(loadFmStatus, 5000);
+      setInterval(loadFmLastHeard, 5000);
+    </script>
+  </body>
+</html>
