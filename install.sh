@@ -22,3 +22,6 @@ GRANT INSERT, UPDATE ON mmdvmdb.* TO 'www-data'@'localhost';
 FLUSH PRIVILEGES;
 EOSQL
 echo "MariaDB initialized."
+
+# Service
+sudo install -m 644 fmparser.service /etc/systemd/system/fmparser.service

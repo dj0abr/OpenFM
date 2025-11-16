@@ -1,0 +1,22 @@
+[Unit]
+Description=FMparser Service
+After=network.target
+
+[Service]
+Type=simple
+User=svxlink
+Group=svxlink
+WorkingDirectory=/usr/local/bin
+
+# Falls das Programm keine eigenen Logs schreibt:
+StandardOutput=journal
+StandardError=journal
+
+ExecStart=/usr/local/bin/FMparser
+
+# Neustarten bei Crash/Fehler
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
