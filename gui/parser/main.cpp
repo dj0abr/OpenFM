@@ -3,6 +3,8 @@
 #include <csignal>
 #include <atomic>
 #include "MqttListener.h"
+#include "handleConfig.h"
+#include "node_info_writer.h"
 
 static std::atomic<bool> g_running{true};
 
@@ -19,7 +21,13 @@ int main(){
     std::signal(SIGTERM, sigHandler);
     MqttListener::start();
 
+    handleConfig cfg;
+    cfg.run();
+
+    NodeInfoWriter nodeInfoWriter("/etc/svxlink/node_info.json");
+
     while(g_running) {
+        nodeInfoWriter.tick();
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
     MqttListener::stop();

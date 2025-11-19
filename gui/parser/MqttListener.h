@@ -19,8 +19,6 @@ public:
 private:
     MqttListener() = delete;
 
-    static void threadFunc();
-
     static void onConnect(struct mosquitto* mosq, void* userdata, int rc);
     static void onMessage(struct mosquitto* mosq, void* userdata, const struct mosquitto_message* msg);
     static void onDisconnect(struct mosquitto* mosq, void* userdata, int rc);

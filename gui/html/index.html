@@ -5,6 +5,18 @@
     <title>OpenFM FM-Funknetz</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta http-equiv="Cache-Control" content="no-store, must-revalidate" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+      crossorigin=""
+    />
+    <script
+      src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+      integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+      crossorigin=""
+    ></script>
 
     <style>
       :root {
@@ -113,6 +125,38 @@
         color: var(--muted);
       }
 
+      .controls-tile h2 {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      .filter-group {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px 18px;
+        font-size: 14px;
+        margin-top: 6px;
+      }
+
+      .filter-group label {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        cursor: pointer;
+        color: var(--muted);
+      }
+
+      .filter-group input[type="radio"] {
+        accent-color: #e5484d;
+      }
+
+      .filter-help {
+        font-size: 11px;
+        color: var(--muted);
+        margin-top: 6px;
+      }
+
       .badge {
         display: inline-block;
         border: 1px solid var(--border);
@@ -208,6 +252,134 @@
         color: var(--muted);
         /* margin-left fällt weg, weil eigene Spalte */
       }
+      .chart-wrap {
+        position: relative;
+        height: 260px;
+        width: 100%;
+      }
+      .map-wrap {
+        position: relative;
+        height: 360px; /* nach Geschmack */
+        width: 100%;
+      }
+
+      .map {
+        position: absolute;
+        inset: 0;
+        border-radius: 12px;
+        overflow: hidden;
+      }
+
+      .lh-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+      }
+
+      .lh-item {
+        display: grid;
+        grid-template-columns: 1.4fr 1.1fr 1.1fr 0.8fr;
+        gap: 10px;
+        align-items: center;
+        padding: 8px 0;
+        border-bottom: 1px dashed #1f2327;
+      }
+
+      .lh-item:last-child {
+        border-bottom: 0;
+      }
+
+      .lh-cs {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono",
+          monospace;
+        font-weight: 700;
+      }
+
+      .lh-time {
+        color: var(--muted);
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono",
+          monospace;
+        font-size: 14px;
+      }
+
+      .lh-mode {
+        font-size: 13px;
+        color: var(--muted);
+      }
+
+      .lh-num {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono",
+          monospace;
+        text-align: right;
+      }
+      a.lh-cs {
+        color: inherit;           /* gleiche Farbe wie normaler Text */
+        text-decoration: none;    /* kein Unterstrich */
+      }
+
+      a.lh-cs:hover {
+        text-decoration: underline;  /* optional: beim Hover Unterstrich */
+      }
+
+      a.lh-cs:visited {
+        color: inherit;           /* nicht lila werden */
+      }
+      .chart-wrap {
+        position: relative;
+        height: 280px;
+        width: 100%;
+      }
+      .filter-second-row {
+        display: flex;
+        align-items: center;
+        margin-top: 8px;
+        gap: 12px;
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .lh-rows-label {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .lh-rows-select {
+        font-size: 12px;
+        padding: 2px 6px;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        background: var(--tile-alt);
+        color: var(--fg);
+        outline: none;
+      }
+
+      .lh-rows-select:focus-visible {
+        outline: 2px solid #acf8ff;
+        outline-offset: 1px;
+      }
+
+      /* rechter Platzhalter-Bereich, damit später was reinpasst */
+      .lh-second-right {
+        font-size: 11px;
+        color: var(--muted);
+        min-height: 18px;
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        flex: 1;
+      }
+      .lh-compact-label {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .lh-compact-label input[type="checkbox"] {
+        transform: scale(0.9);
+      }
     </style>
   </head>
 
@@ -223,6 +395,46 @@
     </header>
 
     <main>
+      <!-- TILE 0: FILTER -->
+      <section class="tile controls-tile">
+        <h2>FILTER</h2>
+
+        <!-- Zeile 1: TG-Auswahl -->
+        <div class="filter-group">
+          <label>
+            <input type="radio" name="tgFilter" value="all" checked />
+            All
+          </label>
+          <label>
+            <input type="radio" name="tgFilter" value="local" />
+            Default TG: <span id="defaultTgLabel">–</span>
+          </label>
+          <label>
+            <input type="radio" name="tgFilter" value="monitored" />
+            Monitor-TGs: <span id="monitorTgsLabel">–</span>
+          </label>
+        </div>
+
+        <!-- Zeile 2: Last-Heard Einstellungen -->
+        <div class="filter-second-row">
+        <label class="lh-rows-label">
+          Last Heard:
+          <select id="lhRowsSelect" class="lh-rows-select">
+            <option value="5">5 Lines</option>
+            <option value="10">10 Lines</option>
+            <option value="15">15 Lines</option>
+            <option value="20">20 Lines</option>
+            <option value="25">25 Lines</option>
+          </select>
+        </label>
+
+        <label class="lh-compact-label">
+          <input type="checkbox" id="lhCompactCheckbox" />
+          skip repeats
+        </label>
+      </div>
+      </section>
+
       <!-- TILE 1: ACTIVE STATIONS -->
       <section class="tile" id="activeTile">
         <h2>ACTIVE STATIONS <span class="badge" id="activeCount">0</span></h2>
@@ -234,21 +446,718 @@
         <h2>LAST HEARD <span class="badge" id="lhCount">0</span></h2>
         <ul id="lhList" class="fm-list"></ul>
       </section>
+
+            <!-- TILE: Hall of Fame – Top Callsigns der Woche -->
+      <section class="tile">
+        <h2>Hall of Fame <span class="badge">last 30 Days</span></h2>
+        <div class="chart-wrap">
+          <canvas id="fmHallOfFameChart"></canvas>
+        </div>
+        <ul id="fmHofList" class="lh-list" style="margin-top: 10px"></ul>
+      </section>
+
+      <!-- TILE 3: Top 10 – Number of Transmissions per Callsign -->
+      <section class="tile">
+        <h2>Number of Transmissions per Callsign <span class="badge">last 30&nbsp;days (Top 10)</span></h2>
+        <div class="chart-wrap">
+          <canvas id="fmCallsignTop10CountChart"></canvas>
+        </div>
+      </section>
+
+      <!-- TILE 4: Top 10 – Total Transmission Time per Callsign -->
+      <section class="tile">
+        <h2>Total Transmission Time per Callsign <span class="badge">last 30&nbsp;days (Top 10)</span></h2>
+        <div class="chart-wrap">
+          <canvas id="fmCallsignTop10DurationChart"></canvas>
+        </div>
+      </section>
+
+      <!-- TILE: Top Talkgroups (global) -->
+      <section class="tile">
+        <h2>Top Talkgroups <span class="badge">global</span></h2>
+        <div class="chart-wrap">
+          <canvas id="fmTopTgChart"></canvas>
+        </div>
+        <ul id="fmTopTgList" class="lh-list" style="margin-top: 10px"></ul>
+      </section>
+
+      <!-- TILE: HEATMAP -->
+      <section class="tile">
+        <h2>Activity Heatmap</h2>
+        <div>
+          <canvas id="heatmapCanvas" width="900" height="320"></canvas>
+        </div>
+      </section>
+
+      <!-- TILE: LOCATION -->
+      <section class="tile">
+        <h2>Location</h2>
+        <div class="map-wrap">
+          <div id="map" class="map"></div>
+        </div>
+        <div id="mapMeta" class="subline" style="margin-top:8px"></div>
+      </section>
+      
     </main>
 
-<footer>
-  Live monitoring of the FM-Funknetz. Updated periodically.<br />
-  SVXLink by SM0SVX<br />
-  FM-Funknetz by DJ1JAY<br />
-  OpenFM by DJ0ABR<br />
-  External links (e.g., to qrz.com) open in a new window. Their privacy policy applies.
-</footer>
+    <footer>
+      Live monitoring of the FM-Funknetz. Updated periodically.<br />
+      OpenFM by DJ0ABR<br />
+      SVXLink by SM0SVX<br />
+      FM-Funknetz by DJ1JAY<br />
+      External links (e.g., to qrz.com) open in a new window. Their privacy policy applies.
+    </footer>
 
     <script>
+      let fmTopTgChart = null;
+
+      async function loadFmTopTalkgroups() {
+        try {
+          const r = await fetch("api.php?q=fm_topTalkgroups", { cache: "no-store" });
+          if (!r.ok) throw new Error(r.status + " " + r.statusText);
+
+          const rows = await r.json(); // [{tg, cnt, total_sec, avg_sec}, ...]
+
+          // sicherstellen, dass sauber sortiert ist (Backend sortiert schon nach cnt DESC)
+          rows.sort((a, b) => (Number(b.cnt) || 0) - (Number(a.cnt) || 0));
+
+          const labels = rows.map((x) =>
+            x.tg != null ? "TG " + String(x.tg) : "TG –"
+          );
+          const data = rows.map((x) => Number(x.cnt) || 0);
+
+          // --- Chart -------------------------------------------------------
+          if (!fmTopTgChart) {
+            const ctx = document
+              .getElementById("fmTopTgChart")
+              .getContext("2d");
+
+            fmTopTgChart = new Chart(ctx, {
+              type: "bar",
+              data: {
+                labels,
+                datasets: [
+                  {
+                    label: "Transmissions per TG (global)",
+                    data,
+                    borderWidth: 1,
+                  },
+                ],
+              },
+              options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                  x: {
+                    grid: { color: "rgba(255,255,255,.08)" },
+                    ticks: {
+                      color: "#eaf0f1",
+                      maxRotation: 90,
+                      minRotation: 90,
+                      autoSkip: false,
+                    },
+                  },
+                  y: {
+                    beginAtZero: true,
+                    grid: { color: "rgba(255,255,255,.08)" },
+                    ticks: { precision: 0, color: "#eaf0f1" },
+                  },
+                },
+                plugins: {
+                  legend: { labels: { color: "#eaf0f1" } },
+                  tooltip: {
+                    callbacks: {
+                      afterBody: (items) => {
+                        const i = items[0].dataIndex;
+                        const r = rows[i];
+                        const tot = (Number(r.total_sec) || 0).toFixed(1);
+                        const avg = (Number(r.avg_sec) || 0).toFixed(1);
+                        return [
+                          `Total: ${tot} s`,
+                          `Ø: ${avg} s`,
+                        ];
+                      },
+                    },
+                  },
+                },
+              },
+            });
+          } else {
+            fmTopTgChart.data.labels = labels;
+            fmTopTgChart.data.datasets[0].data = data;
+            fmTopTgChart.update("none");
+          }
+
+          // --- Liste unter dem Chart (Top 5) ------------------------------
+          const ul = document.getElementById("fmTopTgList");
+          if (!ul) return;
+
+          ul.innerHTML = "";
+
+          const maxRows = 5;
+          const limited = rows.slice(0, maxRows);
+
+          limited.forEach((r) => {
+            const li = document.createElement("li");
+            li.className = "lh-item";
+
+            // TG-Spalte inkl. Name aus talkgroups.csv
+            const tgSpan = document.createElement("span");
+            tgSpan.className = "lh-cs";
+
+            const tgNumText = r.tg != null ? "TG " + String(r.tg) : "TG –";
+
+            let labelText = "";
+            const rawLabel = tgLabel ? tgLabel(r.tg) : null;
+            if (rawLabel) {
+              // genau wie in den anderen Listen: "Region" raus, doppelte Spaces weg
+              labelText = rawLabel
+                .replace(/\bRegion\b/gi, "")
+                .replace(/\s{2,}/g, " ")
+                .trim();
+            }
+
+            if (labelText) {
+              tgSpan.textContent = tgNumText + " – " + labelText;
+            } else {
+              tgSpan.textContent = tgNumText;
+            }
+
+            const cntSpan = document.createElement("span");
+            cntSpan.className = "lh-time";
+            cntSpan.textContent = "Transm. " + (r.cnt || 0);
+
+            const avgSpan = document.createElement("span");
+            avgSpan.className = "lh-mode";
+            avgSpan.textContent =
+              "Ø " + (Number(r.avg_sec) || 0).toFixed(1) + " s";
+
+            const totSpan = document.createElement("span");
+            totSpan.className = "lh-num";
+            totSpan.textContent =
+              (Number(r.total_sec) || 0).toFixed(1) + " s";
+
+            li.appendChild(tgSpan);
+            li.appendChild(cntSpan);
+            li.appendChild(avgSpan);
+            li.appendChild(totSpan);
+            ul.appendChild(li);
+          });
+        } catch (e) {
+          console.error(e);
+        }
+      }
+
+      let fmHallOfFameChart = null;
+
+      async function loadFmHallOfFameWeek() {
+        try {
+          const params = new URLSearchParams();
+          params.set("q", "fm_hallOfFameWeek");
+
+          if (filterMode === "local" && defaultTg != null) {
+            params.set("mode", "local");
+            params.set("tg", String(defaultTg));
+          } else if (filterMode === "monitored" && monitorTgs.length > 0) {
+            params.set("mode", "monitored");
+            params.set("tgs", monitorTgs.join(","));
+          } else {
+            params.set("mode", "all");
+          }
+
+          const r = await fetch("api.php?" + params.toString(), { cache: "no-store" });
+          if (!r.ok) throw new Error(r.status + " " + r.statusText);
+          const rows = await r.json(); // [{callsign, qso_count, total_sec, avg_sec, score, country_code}, ...]
+          
+          const labels = rows.map((x) => sanitizeCallsign(x.callsign || "–"));
+          const data = rows.map((x) => Number(x.score) || 0);
+
+          // --- Chart oben ---------------------------------------------------
+          if (!fmHallOfFameChart) {
+            const ctx = document
+              .getElementById("fmHallOfFameChart")
+              .getContext("2d");
+
+            fmHallOfFameChart = new Chart(ctx, {
+              type: "bar",
+              data: {
+                labels,
+                datasets: [
+                  {
+                    label: "Score (last 7 days)",
+                    data,
+                    borderWidth: 1,
+                  },
+                ],
+              },
+              options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                  x: {
+                    grid: { color: "rgba(255,255,255,0.08)" },
+                    ticks: {
+                      color: "#eaf0f1",
+                      maxRotation: 90,
+                      minRotation: 90,
+                      autoSkip: false,
+                    },
+                  },
+                  y: {
+                    beginAtZero: true,
+                    grid: { color: "rgba(255,255,255,0.08)" },
+                    ticks: { color: "#eaf0f1" },
+                  },
+                },
+                plugins: {
+                  legend: { labels: { color: "#eaf0f1" } },
+                  tooltip: {
+                    callbacks: {
+                      afterBody: (items) => {
+                        const i = items[0].dataIndex;
+                        const r = rows[i];
+                        const tot = (Number(r.total_sec) || 0).toFixed(1);
+                        const avg = (Number(r.avg_sec) || 0).toFixed(1);
+                        return [
+                          `Transmissions: ${r.qso_count}`,
+                          `Total: ${tot} s`,
+                          `Ø: ${avg} s`,
+                        ];
+                      },
+                    },
+                  },
+                },
+              },
+            });
+          } else {
+            fmHallOfFameChart.data.labels = labels;
+            fmHallOfFameChart.data.datasets[0].data = data;
+            fmHallOfFameChart.update("none");
+          }
+
+          // --- Liste unten wie Hall of Fame im DV-Dashboard ----------------
+          const ul = document.getElementById("fmHofList");
+          if (!ul) return;
+
+          ul.innerHTML = "";
+
+          const maxRows = 5;
+          const limitedRows = rows.slice(0, maxRows);
+
+          limitedRows.forEach((r, idx) => {
+            const li = document.createElement("li");
+            li.className = "lh-item";
+
+            const cs = document.createElement("a");
+            cs.className = "lh-cs";
+            const clean = sanitizeCallsign(r.callsign || "–");
+            cs.href = "https://www.qrz.com/db/" + encodeURIComponent(clean);
+            cs.target = "_blank";
+            cs.rel = "noopener noreferrer";
+            cs.title = `Profil für ${clean} auf qrz.com öffnen`;
+
+            const medal =
+              idx === 0 ? "🥇 " :
+              idx === 1 ? "🥈 " :
+              idx === 2 ? "🥉 " : "";
+
+            if (r.country_code) {
+              const flag = document.createElement("img");
+              flag.className = "flag";
+              flag.src = "/flags/" + r.country_code + ".png";
+              flag.alt = r.country_code;
+              cs.appendChild(flag);
+            }
+
+            cs.appendChild(document.createTextNode(medal + clean));
+
+            const scoreSpan = document.createElement("span");
+            scoreSpan.className = "lh-time";
+            scoreSpan.textContent =
+              "Score " + (Number(r.score) || 0).toFixed(1);
+
+            const qsoSpan = document.createElement("span");
+            qsoSpan.className = "lh-mode";
+            qsoSpan.textContent = "Transm. " + (r.qso_count || 0);
+
+            const durSpan = document.createElement("span");
+            durSpan.className = "lh-num";
+            durSpan.textContent =
+              (Number(r.total_sec) || 0).toFixed(1) + " s";
+
+            li.appendChild(cs);
+            li.appendChild(scoreSpan);
+            li.appendChild(qsoSpan);
+            li.appendChild(durSpan);
+            ul.appendChild(li);
+          });
+        } catch (e) {
+          console.error(e);
+        }
+      }
+
+      async function loadFmHeatmap() {
+        try {
+          const params = new URLSearchParams();
+          params.set("q", "fmheatmap");
+
+          if (filterMode === "local" && defaultTg != null) {
+            params.set("mode", "local");
+            params.set("tg", String(defaultTg));
+          } else if (filterMode === "monitored" && monitorTgs.length > 0) {
+            params.set("mode", "monitored");
+            params.set("tgs", monitorTgs.join(","));
+          } else {
+            params.set("mode", "all");
+          }
+
+          const r = await fetch("api.php?" + params.toString(), {
+            cache: "no-store",
+          });
+          if (!r.ok) throw new Error(r.status + " " + r.statusText);
+
+          const rows = await r.json();
+          drawFmHeatmap(Array.isArray(rows) ? rows : []);
+        } catch (e) {
+          console.error("Heatmap error:", e);
+        }
+      }
+
+      function drawFmHeatmap(rows) {
+        const canvas = document.getElementById("heatmapCanvas");
+        if (!canvas) return;
+        const ctx = canvas.getContext("2d");
+
+        const width = canvas.width;
+        const height = canvas.height;
+
+        const cellW = width / 24;
+        const cellH = height / 7;
+
+        // Max-Wert suchen für Farbskala
+        let max = 1;
+        rows.forEach(r => {
+          if (r.count > max) max = r.count;
+        });
+
+        // Hintergrund
+        ctx.fillStyle = "#111";
+        ctx.fillRect(0, 0, width, height);
+
+        // Heatmap-Zellen zeichnen
+        rows.forEach(r => {
+          const wd = Number(r.weekday); // 0=Mo
+          const hr = Number(r.hour);
+          const count = Number(r.count);
+
+          const intensity = count / max;  // 0..1
+          // Farbskala (rot → gelb → weiß)
+          const col = heatColor(intensity);
+
+          ctx.fillStyle = col;
+          ctx.fillRect(hr * cellW, wd * cellH, cellW - 1, cellH - 1);
+        });
+
+        // Wochentags-Beschriftung
+        const days = ["Mo","Di","Mi","Do","Fr","Sa","So"];
+        ctx.fillStyle = "#ccc";
+        ctx.font = "12px sans-serif";
+        for (let i=0; i<7; i++) {
+          ctx.fillText(days[i], 5, i * cellH + 14);
+        }
+
+        // Stunden-Beschriftung
+        for (let h=0; h<24; h++) {
+          if (h % 2 === 0) {
+            ctx.fillText(String(h).padStart(2,"0"), h * cellW + 3, height - 5);
+          }
+        }
+      }
+
+      function heatColor(x) {
+        // x: 0..1
+        const r = Math.round(255 * x);
+        const g = Math.round(200 * x);
+        return `rgb(${r},${g},0)`;
+      }
+
+
+      let map, mapLayer, mapMarker, mapCircle;
+
+      function fmtCoord(v, isLat) {
+        if (v == null || !isFinite(Number(v))) return "–";
+        const n = Number(v);
+        const hemi = isLat ? (n >= 0 ? "N" : "S") : (n >= 0 ? "E" : "W");
+        return Math.abs(n).toFixed(6) + "° " + hemi;
+      }
+
+      function initOrUpdateMap(cfg) {
+        const lat = Number(cfg?.latitude);
+        const lon = Number(cfg?.longitude);
+
+        const meta = document.getElementById("mapMeta");
+        if (!(isFinite(lat) && isFinite(lon))) {
+          if (meta) meta.textContent = "Kein Standort konfiguriert.";
+          return;
+        }
+
+        if (!map) {
+          map = L.map("map", {
+            zoomControl: true,
+            attributionControl: true,
+          });
+          mapLayer = L.tileLayer(
+            "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+            {
+              maxZoom: 19,
+              attribution:
+                '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors',
+            }
+          ).addTo(map);
+        }
+
+        const pos = [lat, lon];
+        map.setView(pos, 12);
+
+        if (!mapMarker) {
+          mapMarker = L.marker(pos).addTo(map);
+        } else {
+          mapMarker.setLatLng(pos);
+        }
+
+        // kleiner Radius, z.B. 1 km
+        if (!mapCircle) {
+          mapCircle = L.circle(pos, {
+            radius: 1000,
+            opacity: 0.4,
+            weight: 1,
+            fillOpacity: 0.08,
+          }).addTo(map);
+        } else {
+          mapCircle.setLatLng(pos);
+        }
+
+        const cs = sanitizeCallsign(cfg.callsign || "");
+        const rx = fmtMHz(cfg.rxfreq);
+        const tx = fmtMHz(cfg.txfreq);
+
+        const popup =
+          `<b>${cs || "–"}</b><br>` +
+          `${fmtCoord(lat, true)} · ${fmtCoord(lon, false)}<br>` +
+          `RX ${rx} · TX ${tx}`;
+
+        mapMarker.bindPopup(popup);
+
+        if (meta) {
+          meta.textContent =
+            `QTH: ${fmtCoord(lat, true)} · ${fmtCoord(lon, false)} · RX ${rx} · TX ${tx}`;
+        }
+
+        // Workaround für initiales Rendering
+        setTimeout(() => map.invalidateSize(), 50);
+      }
+
+      // Bei Resize Karte neu layouten
+      window.addEventListener("resize", () => {
+        if (map) setTimeout(() => map.invalidateSize(), 100);
+      });
+
+    // --- Chart: Top 10 Callsigns (Count / Duration) -----------------------
+
+      let fmCallsignTop10DurationChart = null;
+
+      let fmCallsignTop10CountChart = null;
+
+      async function loadFmCallsignTop10Count() {
+        try {
+          const params = new URLSearchParams();
+          params.set("q", "fm_callsignTop10Count");
+
+          if (filterMode === "local" && defaultTg != null) {
+            params.set("mode", "local");
+            params.set("tg", String(defaultTg));
+          } else if (filterMode === "monitored" && monitorTgs.length > 0) {
+            params.set("mode", "monitored");
+            params.set("tgs", monitorTgs.join(","));
+          } else {
+            params.set("mode", "all");
+          }
+
+          const r = await fetch("api.php?" + params.toString(), {
+            cache: "no-store",
+          });
+          if (!r.ok) throw new Error(r.status + " " + r.statusText);
+
+          const rows = await r.json(); // [{callsign, cnt, country_code}, ...]
+
+          const labels = rows.map((x) => sanitizeCallsign(x.callsign || "–"));
+          const data   = rows.map((x) => Number(x.cnt) || 0);
+
+          if (!fmCallsignTop10CountChart) {
+            const ctx = document
+              .getElementById("fmCallsignTop10CountChart")
+              .getContext("2d");
+
+            fmCallsignTop10CountChart = new Chart(ctx, {
+              type: "bar",
+              data: {
+                labels,
+                datasets: [
+                  {
+                    label: "Transmissions",
+                    data,
+                    borderWidth: 1,
+                  },
+                ],
+              },
+              options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                  x: {
+                    grid: { color: "rgba(255,255,255,.08)" },
+                    ticks: {
+                      color: "#eaf0f1",
+                      maxRotation: 90,
+                      minRotation: 90,
+                      autoSkip: false,
+                    },
+                  },
+                  y: {
+                    beginAtZero: true,
+                    grid: { color: "rgba(255,255,255,.08)" },
+                    ticks: { precision: 0, color: "#eaf0f1" },
+                  },
+                },
+                plugins: {
+                  legend: { labels: { color: "#eaf0f1" } },
+                  tooltip: { enabled: true },
+                },
+              },
+            });
+          } else {
+            fmCallsignTop10CountChart.data.labels = labels;
+            fmCallsignTop10CountChart.data.datasets[0].data = data;
+            fmCallsignTop10CountChart.update("none");
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      }
+
+      async function loadFmCallsignTop10Duration() {
+        try {
+          const params = new URLSearchParams();
+          params.set("q", "fm_callsignTop10Duration");
+
+          if (filterMode === "local" && defaultTg != null) {
+            params.set("mode", "local");
+            params.set("tg", String(defaultTg));
+          } else if (filterMode === "monitored" && monitorTgs.length > 0) {
+            params.set("mode", "monitored");
+            params.set("tgs", monitorTgs.join(","));
+          } else {
+            params.set("mode", "all");
+          }
+
+          const r = await fetch("api.php?" + params.toString(), {
+            cache: "no-store",
+          });
+          if (!r.ok) throw new Error(r.status + " " + r.statusText);
+
+          const rows = await r.json(); // [{callsign, sec, country_code}, ...]
+
+          const labels = rows.map((x) => sanitizeCallsign(x.callsign || "–"));
+          const data   = rows.map((x) => Number(x.sec) || 0);
+
+          if (!fmCallsignTop10DurationChart) {
+            const ctx = document
+              .getElementById("fmCallsignTop10DurationChart")
+              .getContext("2d");
+
+            fmCallsignTop10DurationChart = new Chart(ctx, {
+              type: "bar",
+              data: {
+                labels,
+                datasets: [
+                  {
+                    label: "Seconds",
+                    data,
+                    borderWidth: 1,
+                  },
+                ],
+              },
+              options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                  x: {
+                    grid: { color: "rgba(255,255,255,.08)" },
+                    ticks: {
+                      color: "#eaf0f1",
+                      maxRotation: 90,
+                      minRotation: 90,
+                      autoSkip: false,
+                    },
+                  },
+                  y: {
+                    beginAtZero: true,
+                    grid: { color: "rgba(255,255,255,.08)" },
+                    ticks: { color: "#eaf0f1" },
+                  },
+                },
+                plugins: {
+                  legend: { labels: { color: "#eaf0f1" } },
+                  tooltip: {
+                    callbacks: {
+                      label: (ctx) =>
+                        (ctx.parsed.y || 0).toFixed(1) + " s",
+                    },
+                  },
+                },
+              },
+            });
+          } else {
+            fmCallsignTop10DurationChart.data.labels = labels;
+            fmCallsignTop10DurationChart.data.datasets[0].data = data;
+            fmCallsignTop10DurationChart.update("none");
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      }
+
       // --- helpers -----------------------------------------------------------
 
       // --- Talkgroup-Name Cache ---------------------------------------------
       let tgNames = null; // Map: tgNum (String) -> Label
+
+      // --- Filter-Status ----------------------------------------------------
+      // gespeicherten Modus aus localStorage holen (falls vorhanden)
+      const storedFilterMode = localStorage.getItem("tgFilterMode");
+      let filterMode =
+        storedFilterMode === "local" || storedFilterMode === "monitored"
+          ? storedFilterMode
+          : "all"; // Fallback
+
+      let defaultTg = null;        // Zahl oder null
+      let monitorTgs = [];         // Array von Zahlen
+
+      // Last-Heard: Anzahl Zeilen (5..25)
+      const storedLhRows = parseInt(localStorage.getItem("lhRows") || "15", 10);
+      let lhMaxRows =
+        !isNaN(storedLhRows) && storedLhRows >= 5 && storedLhRows <= 25
+          ? storedLhRows
+          : 15;
+
+      // Last-Heard: gleiche, aufeinanderfolgende Callsigns zusammenfassen?
+      const storedLhCompact = localStorage.getItem("lhCompact");
+      let lhCompactEnabled = storedLhCompact === "1";
+
+      // Rohdaten der API, ungefiltert
+      let fmStatusRaw = [];
+      let fmLastHeardRaw = [];
+
 
       function tgLabel(tg) {
         if (!tgNames) return null;
@@ -348,21 +1257,66 @@
         const cs = sanitizeCallsign(cfg.callsign || "");
         if (!cs) return;
 
-        const role = Number(cfg.duplex) === 1 ? "Repeater" : "Station";
+        const rx = Number(cfg.rxfreq);
+        const tx = Number(cfg.txfreq);
+
+        let role = "Hotspot"; // Default
+
+        // Wenn beide Frequenzen gültig und ungleich sind → Repeater
+        if (isFinite(rx) && isFinite(tx) && rx > 0 && tx > 0 && rx !== tx) {
+          role = "Repeater";
+        }
+
         h1.textContent = cs + " OpenFM FM-Funknetz " + role + " V1.0";
       }
 
-      // Apply subline with RX/TX frequency.
-      function applySubline(cfg) {
-        const sub = document.getElementById("subline");
-        if (!sub || !cfg) return;
-        const rx = fmtMHz(cfg.rxfreq);
-        const tx = fmtMHz(cfg.txfreq);
-        sub.textContent =
-          "OpenFM by DJ0ABR (SVXlink by SM0SVX) RX " + rx + " TX " + tx;
+      // Wendet den aktuellen Filter (filterMode) auf ein Datenarray an.
+      function filterRows(rows) {
+        if (!Array.isArray(rows)) return [];
+
+        if (filterMode === "all") {
+          return rows;
+        }
+
+        if (filterMode === "local" && defaultTg != null) {
+          const tgt = Number(defaultTg);
+          return rows.filter((r) => Number(r.tg) === tgt);
+        }
+
+        if (filterMode === "monitored" && monitorTgs.length > 0) {
+          return rows.filter((r) => monitorTgs.includes(Number(r.tg)));
+        }
+
+        // Fallback: nichts matcht -> leeres Array
+        return [];
+      }
+
+      // Rendert beide Listen (Active + LastHeard) aus den Rohdaten mit aktuellem Filter.
+      function renderAllLists() {
+        const statusFiltered = filterRows(fmStatusRaw); // fmstatus bleibt clientseitig
+        renderFmStatus(statusFiltered);
+
+        // LastHeard kommt bereits gefiltert von der API
+        renderFmLastHeard(fmLastHeardRaw);
       }
 
       // --- render functions --------------------------------------------------
+      function compactLastHeardRows(rows) {
+        if (!Array.isArray(rows) || !lhCompactEnabled) return rows || [];
+
+        const out = [];
+        let lastCs = null;
+
+        rows.forEach((r) => {
+          const cs = (r.callsign || "").toUpperCase();
+          if (cs !== lastCs) {
+            out.push(r);
+            lastCs = cs;
+          }
+        });
+
+        return out;
+      }
 
       // Render list for LAST HEARD.
       function renderFmLastHeard(rows) {
@@ -370,7 +1324,12 @@
         const badge = document.getElementById("lhCount");
         list.innerHTML = "";
 
-        if (!Array.isArray(rows) || rows.length === 0) {
+        const maxRows = lhMaxRows;
+
+        const baseRows = Array.isArray(rows) ? rows : [];
+        const effectiveRows = compactLastHeardRows(baseRows);
+
+        if (effectiveRows.length === 0) {
           badge.textContent = "0";
           const li = document.createElement("li");
           li.className = "fm-item";
@@ -384,9 +1343,10 @@
           return;
         }
 
-        badge.textContent = rows.length.toString();
+        const usedRows = effectiveRows.slice(0, maxRows);
+        badge.textContent = usedRows.length.toString();
 
-        rows.forEach((r) => {
+        usedRows.forEach((r) => {
           const li = document.createElement("li");
           li.className = "fm-item";
 
@@ -551,13 +1511,57 @@
 
       // --- loading functions -------------------------------------------------
 
+      // Apply subline with RX/TX frequency.
+      function applySubline(cfg) {
+        const sub = document.getElementById("subline");
+        if (!sub || !cfg) return;
+
+        const rx = fmtMHz(cfg.rxfreq);
+        const tx = fmtMHz(cfg.txfreq);
+
+        sub.textContent =
+          "OpenFM by DJ0ABR (SVXlink by SM0SVX, FM-Funknetz by DJ1JAY) RX " +
+          rx +
+          " TX " +
+          tx;
+      }
+
       async function loadLocalConfig() {
         try {
           const r = await fetch("api.php?q=localconfig", { cache: "no-store" });
           if (!r.ok) throw new Error(r.status + " " + r.statusText);
           const cfg = await r.json();
+
           applyLocalHeader(cfg || {});
           applySubline(cfg || {});
+          initOrUpdateMap(cfg || {});
+
+          // --- Default TG & Monitor-TGs aus der Config übernehmen ----------
+          defaultTg =
+            cfg && cfg.default_tg != null ? Number(cfg.default_tg) : null;
+
+          monitorTgs = [];
+          if (cfg && cfg.monitor_tgs) {
+            monitorTgs = cfg.monitor_tgs
+              .split(",")
+              .map((x) => Number(x.trim()))
+              .filter((n) => !isNaN(n));
+          }
+
+          // Labels in der Filter-Kachel updaten
+          const defLabel = document.getElementById("defaultTgLabel");
+          if (defLabel) {
+            defLabel.textContent =
+              defaultTg != null ? String(defaultTg) : "–";
+          }
+
+          const monLabel = document.getElementById("monitorTgsLabel");
+          if (monLabel) {
+            monLabel.textContent =
+              monitorTgs.length > 0
+                ? monitorTgs.join(", ")
+                : "–";
+          }
         } catch (e) {
           console.error(e);
         }
@@ -568,7 +1572,8 @@
           const r = await fetch("api.php?q=fmstatus", { cache: "no-store" });
           if (!r.ok) throw new Error(r.status + " " + r.statusText);
           const rows = await r.json();
-          renderFmStatus(Array.isArray(rows) ? rows : []);
+          fmStatusRaw = Array.isArray(rows) ? rows : [];
+          renderAllLists();
         } catch (e) {
           console.error(e);
         }
@@ -576,27 +1581,151 @@
 
       async function loadFmLastHeard() {
         try {
-          const r = await fetch("api.php?q=fmlastheard", { cache: "no-store" });
+          const params = new URLSearchParams();
+          params.set("q", "fmlastheard");
+
+          if (filterMode === "local" && defaultTg != null) {
+            params.set("mode", "local");
+            params.set("tg", String(defaultTg));
+          } else if (filterMode === "monitored" && monitorTgs.length > 0) {
+            params.set("mode", "monitored");
+            params.set("tgs", monitorTgs.join(","));
+          } else {
+            params.set("mode", "all");
+          }
+
+          const r = await fetch("api.php?" + params.toString(), {
+            cache: "no-store",
+          });
           if (!r.ok) throw new Error(r.status + " " + r.statusText);
+
           const rows = await r.json();
-          // API should already filter talk='stop', otherwise filter here:
-          // const filtered = (Array.isArray(rows) ? rows : []).filter(x => x.talk === 'stop');
-          renderFmLastHeard(Array.isArray(rows) ? rows : []);
+          // Kommt jetzt schon gefiltert von der API
+          fmLastHeardRaw = Array.isArray(rows) ? rows : [];
+
+          // Nur LastHeard rendern (Status separat)
+          renderFmLastHeard(fmLastHeardRaw);
         } catch (e) {
           console.error(e);
         }
       }
 
+      function initFilterControls() {
+        const radios = document.querySelectorAll('input[name="tgFilter"]');
+        const rowsSelect = document.getElementById("lhRowsSelect");
+        const compactCheckbox = document.getElementById("lhCompactCheckbox");
+
+        // beim Laden: Radiobutton passend zu filterMode setzen
+        let matched = false;
+        radios.forEach((r) => {
+          if (r.value === filterMode) {
+            r.checked = true;
+            matched = true;
+          }
+        });
+
+        if (!matched) {
+          filterMode = "all";
+          const allRadio = document.querySelector('input[name="tgFilter"][value="all"]');
+          if (allRadio) allRadio.checked = true;
+        }
+
+        // beim Laden: Select passend zu lhMaxRows setzen
+        if (rowsSelect) {
+          // falls Wert nicht in den Optionen ist, nimm 15
+          if (
+            !Array.from(rowsSelect.options).some(
+              (opt) => Number(opt.value) === lhMaxRows
+            )
+          ) {
+            lhMaxRows = 15;
+          }
+          rowsSelect.value = String(lhMaxRows);
+
+          rowsSelect.addEventListener("change", () => {
+            const v = parseInt(rowsSelect.value, 10);
+            if (!isNaN(v) && v >= 5 && v <= 25) {
+              lhMaxRows = v;
+              try {
+                localStorage.setItem("lhRows", String(lhMaxRows));
+              } catch (e) {
+                console.warn("Konnte lhRows nicht speichern:", e);
+              }
+              // Last-Heard mit neuer Zeilenanzahl neu rendern
+              renderFmLastHeard(fmLastHeardRaw);
+            }
+          });
+        }
+
+        if (compactCheckbox) {
+          compactCheckbox.checked = lhCompactEnabled;
+
+          compactCheckbox.addEventListener("change", () => {
+            lhCompactEnabled = compactCheckbox.checked;
+            try {
+              localStorage.setItem("lhCompact", lhCompactEnabled ? "1" : "0");
+            } catch (e) {
+              console.warn("Konnte lhCompact nicht speichern:", e);
+            }
+            // nur Darstellung ändern, Daten bleiben gleich
+            renderFmLastHeard(fmLastHeardRaw);
+          });
+        }
+
+        // Event-Handler für die Radiobuttons
+        radios.forEach((r) => {
+          r.addEventListener("change", () => {
+            const checked = document.querySelector('input[name="tgFilter"]:checked');
+            filterMode = checked ? checked.value : "all";
+
+            // Filtermodus speichern
+            try {
+              localStorage.setItem("tgFilterMode", filterMode);
+            } catch (e) {
+              console.warn("Konnte Filtermodus nicht in localStorage speichern:", e);
+            }
+
+            // fmstatus weiterhin clientseitig filtern:
+            renderAllLists();
+
+            // fmlastheard neu vom Server holen (mit Filter in SQL)
+            loadFmLastHeard();
+
+            // Charts neu laden, jetzt mit Filter
+            loadFmHeatmap();
+            loadFmCallsignTop10Count();
+            loadFmCallsignTop10Duration();
+            loadFmHallOfFameWeek();
+            loadFmTopTalkgroups();
+          });
+        });
+      }
+
+
       // --- init --------------------------------------------------------------
+
+      initFilterControls();
 
       loadTalkgroupNames();
       loadLocalConfig();
       loadFmStatus();
       loadFmLastHeard();
+      loadFmCallsignTop10Count();
+      loadFmCallsignTop10Duration();
+      loadFmHeatmap();
+      loadFmHallOfFameWeek();
+      loadFmTopTalkgroups();
 
       // periodic refresh
       setInterval(loadFmStatus, 5000);
       setInterval(loadFmLastHeard, 5000);
+      // Charts müssen nicht so oft, 1x pro Minute reicht
+      setInterval(loadFmCallsignTop10Count, 60000);
+      setInterval(loadFmCallsignTop10Duration, 60000);
+      setInterval(loadFmHeatmap, 60000); // alle 60s refresh
+      setInterval(loadFmHallOfFameWeek, 60000);
+      setInterval(loadFmTopTalkgroups, 60000);
+
     </script>
   </body>
 </html>

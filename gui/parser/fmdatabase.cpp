@@ -12,6 +12,7 @@ FMDatabase::FMDatabase()
 {
     if (!connect()) {
         std::fprintf(stderr, "[FMDB] initial connect() failed: %s\n", lastError_.c_str());
+        std::exit(EXIT_FAILURE);
     }
 }
 
@@ -140,6 +141,39 @@ bool FMDatabase::ensureSchema() noexcept
     if (mysql_query(conn_, q3) != 0) {
         lastError_ = mysql_error(conn_);
         std::fprintf(stderr, "[FMDB] create nodes failed: %s\n", lastError_.c_str());
+        return false;
+    }
+
+    // config-Tabelle (immer genau eine Zeile, id=1)
+    static const char* q4 = R"SQL(
+        CREATE TABLE IF NOT EXISTS config (
+        id           TINYINT UNSIGNED NOT NULL PRIMARY KEY,
+        callsign     VARCHAR(32)   NOT NULL,
+        dns_domain   VARCHAR(255)  NOT NULL,
+        default_tg   INT           NOT NULL,
+        monitor_tgs  TEXT          NOT NULL,
+
+        Location     VARCHAR(255)  NULL,
+        Locator      VARCHAR(64)   NULL,
+        SysOp        VARCHAR(255)  NULL,
+        LAT          VARCHAR(64)   NULL,
+        LON          VARCHAR(64)   NULL,
+        TXFREQ       VARCHAR(64)   NULL,
+        RXFREQ       VARCHAR(64)   NULL,
+        Website      VARCHAR(255)  NULL,
+        nodeLocation VARCHAR(255)  NULL,
+        CTCSS        VARCHAR(64)   NULL,
+
+        updated_at   TIMESTAMP     NOT NULL
+                    DEFAULT CURRENT_TIMESTAMP
+                    ON UPDATE CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    )SQL";
+
+
+    if (mysql_query(conn_, q4) != 0) {
+        lastError_ = mysql_error(conn_);
+        std::fprintf(stderr, "[FMDB] create config failed: %s\n", lastError_.c_str());
         return false;
     }
 
@@ -397,5 +431,139 @@ bool FMDatabase::upsertNode(const std::string& callsign,
         return false;
     }
 
+    return true;
+}
+
+bool FMDatabase::upsertConfig(const std::string& callsign,
+                              const std::string& dnsDomain,
+                              int defaultTg,
+                              const std::string& monitorTgs) noexcept
+{
+    if (!ensureConn()) {
+        std::fprintf(stderr, "[FMDB] upsertConfig: no connection: %s\n", lastError_.c_str());
+        return false;
+    }
+
+    std::lock_guard<std::mutex> lock(mtx_);
+
+    // Prüfen, ob es bereits einen Eintrag mit id=1 gibt
+    {
+        const char* q = "SELECT COUNT(*) FROM config WHERE id=1";
+
+        if (mysql_query(conn_, q) != 0) {
+            lastError_ = mysql_error(conn_);
+            std::fprintf(stderr, "[FMDB] upsertConfig COUNT failed: %s\n", lastError_.c_str());
+            return false;
+        }
+
+        MYSQL_RES* res = mysql_store_result(conn_);
+        if (!res) {
+            lastError_ = mysql_error(conn_);
+            std::fprintf(stderr, "[FMDB] upsertConfig store_result failed: %s\n", lastError_.c_str());
+            return false;
+        }
+
+        MYSQL_ROW row = mysql_fetch_row(res);
+        unsigned long long cnt = (row && row[0]) ? std::strtoull(row[0], nullptr, 10) : 0ULL;
+        mysql_free_result(res);
+
+        if (cnt > 0) {
+            // config existiert schon -> NICHTS ändern!
+            // (GUI oder anderes Tool darf das pflegen, wir fassen es nicht mehr an)
+            return true;
+        }
+    }
+
+    // Wenn wir hier sind, gibt es noch keinen Eintrag mit id=1 -> Defaultwerte anlegen
+    std::string callE  = escape(callsign);
+    std::string dnsE   = escape(dnsDomain);
+    std::string monsE  = escape(monitorTgs);
+
+    std::ostringstream oss;
+    oss << "INSERT INTO config (id, callsign, dns_domain, default_tg, monitor_tgs) VALUES ("
+        << "1,"
+        << "'" << callE << "',"
+        << "'" << dnsE  << "',"
+        <<      defaultTg << ","
+        << "'" << monsE << "')";
+
+    if (mysql_query(conn_, oss.str().c_str()) != 0) {
+        lastError_ = mysql_error(conn_);
+        std::fprintf(stderr, "[FMDB] upsertConfig INSERT failed: %s\n", lastError_.c_str());
+        return false;
+    }
+
+    return true;
+}
+
+bool FMDatabase::getConfig(ConfigRow& out) noexcept
+{
+    if (!ensureConn()) {
+        std::fprintf(stderr, "[FMDB] getConfig: no connection: %s\n", lastError_.c_str());
+        return false;
+    }
+
+    std::lock_guard<std::mutex> lock(mtx_);
+
+    // Nur die Zeile mit id=1
+    const char* q =
+        "SELECT "
+        "  id, callsign, dns_domain, default_tg, monitor_tgs, "
+        "  Location, Locator, SysOp, LAT, LON, TXFREQ, RXFREQ, "
+        "  Website, nodeLocation, CTCSS, "
+        "  DATE_FORMAT(updated_at,'%Y-%m-%d %H:%i:%s') AS updated_at "
+        "FROM config "
+        "WHERE id=1 "
+        "LIMIT 1";
+
+    if (mysql_query(conn_, q) != 0) {
+        lastError_ = mysql_error(conn_);
+        std::fprintf(stderr, "[FMDB] getConfig query failed: %s\n", lastError_.c_str());
+        return false;
+    }
+
+    MYSQL_RES* res = mysql_store_result(conn_);
+    if (!res) {
+        lastError_ = mysql_error(conn_);
+        std::fprintf(stderr, "[FMDB] getConfig store_result failed: %s\n", lastError_.c_str());
+        return false;
+    }
+
+    MYSQL_ROW row = mysql_fetch_row(res);
+    if (!row) {
+        // keine config-Zeile vorhanden
+        mysql_free_result(res);
+        lastError_ = "getConfig: no row with id=1";
+        return false;
+    }
+
+    auto getInt = [](const char* s, int defVal = 0) {
+        if (!s) return defVal;
+        try {
+            return std::stoi(s);
+        } catch (...) {
+            return defVal;
+        }
+    };
+
+    out.id          = getInt(row[0], 0);
+    out.callsign    = row[1]  ? row[1]  : "";
+    out.dnsDomain   = row[2]  ? row[2]  : "";
+    out.defaultTg   = getInt(row[3], 0);
+    out.monitorTgs  = row[4]  ? row[4]  : "";
+
+    out.Location    = row[5]  ? row[5]  : "";
+    out.Locator     = row[6]  ? row[6]  : "";
+    out.SysOp       = row[7]  ? row[7]  : "";
+    out.LAT         = row[8]  ? row[8]  : "";
+    out.LON         = row[9]  ? row[9]  : "";
+    out.TXFREQ      = row[10] ? row[10] : "";
+    out.RXFREQ      = row[11] ? row[11] : "";
+    out.Website     = row[12] ? row[12] : "";
+    out.nodeLocation= row[13] ? row[13] : "";
+    out.CTCSS       = row[14] ? row[14] : "";
+    out.updatedAt   = row[15] ? row[15] : "";
+
+    mysql_free_result(res);
     return true;
 }

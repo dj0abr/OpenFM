@@ -46,7 +46,7 @@ void MqttListener::start()
 {
     if (!s_initialized.load()) {
         std::cerr << "[MqttListener] Not initialized\n";
-        return;
+        std::exit(EXIT_FAILURE);
     }
     if (s_running.load()) {
         std::cerr << "[MqttListener] Already running\n";
@@ -58,7 +58,7 @@ void MqttListener::start()
     if (rc != MOSQ_ERR_SUCCESS) {
         std::cerr << "[MqttListener] mosquitto_connect_async failed: "
                   << mosquitto_strerror(rc) << "\n";
-        return;
+        std::exit(EXIT_FAILURE);
     }
 
     // internen mosquitto-Thread starten
@@ -66,7 +66,7 @@ void MqttListener::start()
     if (rc != MOSQ_ERR_SUCCESS) {
         std::cerr << "[MqttListener] mosquitto_loop_start failed: "
                   << mosquitto_strerror(rc) << "\n";
-        return;
+        std::exit(EXIT_FAILURE);
     }
 
     s_running = true;

@@ -1,0 +1,561 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>OpenFM – Configuration</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="Cache-Control" content="no-store, must-revalidate" />
+
+  <style>
+    :root{
+      --bg:#0b0c10; --fg:#eaf0f1; --muted:#9aa3a7; --border:#1a1f24;
+      --tile:#222831; --tile-alt:#1d232c; --ok:#28a745; --warn:#e5a70a; --err:#e5484d;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; color:var(--fg);
+      background:linear-gradient(180deg,#0b0c10,#0f1419 260px);
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Open Sans","Helvetica Neue",Arial,sans-serif;
+    }
+    header{
+      position:sticky; top:0; backdrop-filter:blur(8px); background:#0006;
+      border-bottom:1px solid var(--border); padding:18px 20px; text-align:center;
+    }
+    header h1{margin:0; font-size:28px; letter-spacing:.2px}
+    main{max-width:980px; margin:0 auto; padding:20px}
+    .grid{display:grid; gap:18px; grid-template-columns:1fr 1fr}
+    @media (max-width:740px){.grid{grid-template-columns:1fr}}
+    .tile{
+      background:var(--tile); border:1px solid var(--border); border-radius:16px;
+      padding:18px 20px; box-shadow:0 1px 0 #0004 inset;
+      position: relative;
+    }
+    .tile h2{
+      margin:0 0 14px 0; font-size:12px; text-transform:uppercase;
+      letter-spacing:.12em; color:var(--muted);
+      display:flex; align-items:center; gap:8px;
+    }
+    .row{display:grid; grid-template-columns:1fr 1fr; gap:16px}
+    .row + .row{margin-top:12px}
+    @media (max-width:740px){.row{grid-template-columns:1fr}}
+    .field{display:flex; flex-direction:column; gap:8px}
+    label{font-size:13px; color:var(--muted)}
+    input, select, textarea{
+      width:100%; padding:12px 12px; border-radius:10px; border:1px solid var(--border);
+      background:var(--tile-alt); color:var(--fg); font-size:15px; outline:none;
+    }
+
+    /* optional, damit man es nur vertikal ziehen kann und es von Haus aus höher ist */
+    textarea {
+      min-height: 96px;
+      resize: vertical;
+    }
+    input:focus, select:focus{
+      border-color: var(--accent, #2ea6ff);
+      box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent, #2ea6ff) 30%, transparent);
+    }
+    .hint{font-size:12px; color:var(--muted)}
+    button{
+      border:1px solid var(--border); background:var(--tile-alt); color:var(--fg);
+      padding:10px 14px; border-radius:12px; cursor:pointer; font-weight:600;
+    }
+    button.primary{
+      background: linear-gradient(180deg, #2a3440, #1f2832);
+      border-color:#365068;
+      box-shadow: 0 0 0 0 rgba(0,0,0,0), 0 8px 20px #0005 inset;
+    }
+    button.primary:hover{ transform: translateY(-1px); }
+    button.primary:active{ transform: translateY(0); }
+
+    .badge{
+      display:inline-block; border:1px solid var(--border); background:var(--tile-alt);
+      color:var(--muted); border-radius:999px; padding:2px 8px; font-size:12px;
+      position: relative; padding-left: 18px;
+    }
+    .badge::before{
+      content:""; width:8px; height:8px; border-radius:50%;
+      position:absolute; left:6px; top:50%; transform:translateY(-50%);
+      background: var(--accent, #9aa3a7);
+    }
+
+    .footer-note{color:var(--muted); font-size:12px; text-align:center; padding:12px}
+    .error{color:var(--err); font-size:13px; margin-top:6px}
+    .ok{color:var(--ok); font-size:13px; margin-top:6px}
+    .center{grid-column:1 / -1}
+    .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace}
+    .snackbar{
+      position:fixed; left:50%; transform:translateX(-50%); bottom:20px;
+      background:#141a20; border:1px solid var(--border); color:var(--fg);
+      padding:10px 14px; border-radius:12px; display:none; z-index:9999;
+    }
+    .actions-wrap {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      align-items: center;
+    }
+    .actions-right {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+      align-items: center;
+    }
+    .pw-inline {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .pw-toggle {
+      border: 1px solid var(--border);
+      background: var(--tile-alt);
+      color: var(--fg);
+      padding: 8px 10px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    .pw-toggle:active { transform: translateY(1px); }
+
+    /* Akzentfarben je Kachel */
+    .tile.station { --accent: #5cc8ff; }          /* hellblau */
+    .tile.repeater { --accent: #3ddc97; }        /* grün */
+    .tile.talkgroups { --accent: #b889f4; }      /* lila */
+    .tile.actions-tile { --accent: #e5484d; }    /* rot */
+
+    /* linke Akzent-Leiste an jeder Kachel */
+    .tile::before{
+      content:"";
+      position:absolute; inset:0 auto 0 0; width:4px;
+      background: var(--accent, transparent);
+      border-radius: 16px 0 0 16px;
+      opacity:.9;
+    }
+
+    /* Icons vor Überschrift */
+    .tile.station h2::before{content:"📡";}
+    .tile.repeater h2::before{content:"📶";}
+    .tile.talkgroups h2::before{content:"🗣️";}
+    .tile.actions-tile h2::before { content: "⚙️"; }
+
+    .snackbar.ok::before   { content:"✅ "; }
+    .snackbar.error::before{ content:"⚠️ "; }
+    a.hint { color: var(--muted); text-decoration: none; font-size: 12px; }
+    a.hint:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>OpenFM – Configuration</h1>
+    <div class="hint">
+      Latitude/Longitude accept comma <b>,</b> or dot <b>.</b>. Frequency fields are integer Hz.
+    </div>
+  </header>
+
+  <main>
+    <form id="cfgForm" class="grid" novalidate>
+      <!-- TILE: STATION -->
+      <section class="tile center station">
+        <h2>Station</h2>
+
+        <div class="row">
+          <div class="field">
+            <label for="Callsign">Callsign</label>
+            <input id="Callsign" name="Callsign" class="mono"
+              required pattern="^[A-Za-z0-9/]{3,}$" placeholder="YOUR_CALL" style="text-transform:uppercase"/>
+            <div class="hint">Station / Repeater callsign</div>
+          </div>
+          <div class="field">
+            <label for="Region">Region</label>
+            <input id="Region" name="Region" class="mono" placeholder="Region" />
+            <div class="hint">e.g. BY, NRW, OE, F, ...</div>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="field">
+            <label for="Location">Location</label>
+            <input id="Location" name="Location" class="mono" placeholder="City" />
+          </div>
+          <div class="field">
+            <label for="Locator">Locator</label>
+            <input id="Locator" name="Locator" class="mono" placeholder="JN59xx" maxlength="6" />
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="field">
+            <label for="Latitude">Latitude</label>
+            <input id="Latitude" name="Latitude" type="text" inputmode="decimal" class="mono" placeholder="49,123456" required />
+            <div class="hint">Decimal with “,” or “.”</div>
+          </div>
+          <div class="field">
+            <label for="Longitude">Longitude</label>
+            <input id="Longitude" name="Longitude" type="text" inputmode="decimal" class="mono" placeholder="11.123456" required />
+            <div class="hint">Decimal with “,” or “.”</div>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="field">
+            <label for="URL">URL (optional)</label>
+            <input id="URL" name="URL" type="text" class="mono" placeholder="https://www.yourURL.de" />
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="field" style="grid-column:1 / -1">
+            <label for="SYSOP">SYSOP</label>
+            <input id="SYSOP" name="SYSOP" class="mono" placeholder="Name, Call, E-Mail" />
+          </div>
+        </div>
+      </section>
+
+      <!-- TILE: REPEATER / HOTSPOT -->
+      <section class="tile repeater">
+        <h2>Repeater / Hotspot</h2>
+
+        <div class="row">
+          <div class="field">
+            <label for="RXFrequency">RX Frequency (Hz)</label>
+            <input id="RXFrequency" name="RXFrequency" type="number" inputmode="numeric" class="mono"
+              required min="1000000" step="1" placeholder="145000000" />
+            <div class="hint">receive frequency in Hz</div>
+          </div>
+          <div class="field">
+            <label for="TXFrequency">TX Frequency (Hz)</label>
+            <input id="TXFrequency" name="TXFrequency" type="number" inputmode="numeric" class="mono"
+              required min="1000000" step="1" placeholder="145600000" />
+            <div class="hint">transmit frequency in Hz</div>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="field">
+            <label for="Network">Network</label>
+            <input id="Network" name="Network" class="mono" placeholder="e.g. FM-Funknetz, Local, ..." />
+          </div>
+          <div class="field">
+            <label for="CTCSSRepeater">CTCSS</label>
+            <input id="CTCSSRepeater" name="CTCSSRepeater" class="mono" placeholder="88.5" />
+            <div class="hint">CTCSS for repeater (TX/RX)</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TILE: TALKGROUPS -->
+      <section class="tile talkgroups">
+        <h2>Talkgroups</h2>
+
+        <div class="row">
+          <div class="field">
+            <label for="TGDefault">Default</label>
+            <input id="TGDefault" name="TGDefault" class="mono" placeholder="262, 2620" />
+            <div class="hint">default talkgroup(s) after startup</div>
+          </div>
+          <div class="field">
+            <label for="TGMonitored">Monitored</label>
+            <textarea id="TGMonitored" name="TGMonitored" class="mono" rows="4"
+                      placeholder="262, 910, 263"></textarea>
+            <div class="hint">comma separated list of monitored talkgroups</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TILE: ACTIONS -->
+      <section class="tile center actions-tile">
+        <h2>Actions</h2>
+
+        <div class="actions-wrap">
+          <!-- Links: Passwortfeld -->
+          <div class="field">
+            <label for="ConfigPassword">Config Password</label>
+            <div class="pw-inline">
+              <input id="ConfigPassword" name="ConfigPassword" type="password" class="mono"
+                    placeholder="••••••••" autocomplete="new-password" />
+              <button type="button" id="togglePw" class="pw-toggle" aria-controls="ConfigPassword" aria-pressed="false">
+                Show
+              </button>
+            </div>
+            <div class="hint">enter configuration password</div>
+          </div>
+
+          <!-- Rechts: Status + Buttons -->
+          <div class="actions-right">
+            <span id="formState" class="badge">ready</span>
+            <button class="primary" id="saveBtn" type="submit">💾 Save and Exit</button>
+          </div>
+        </div>
+
+        <div id="msg" class="hint"></div>
+      </section>
+    </form>
+  </main>
+
+  <div id="snack" class="snackbar"></div>
+
+  <footer class="footer-note">
+    OpenFM Config • Dark UI • Client-side validation. Server validates again.
+  </footer>
+
+  <script>
+    const form = document.getElementById('cfgForm');
+    const msg  = document.getElementById('msg');
+    const snack= document.getElementById('snack');
+    const state= document.getElementById('formState');
+
+    function normalizeTgList(raw){
+      let s = (raw ?? '').toString().trim();
+      if (!s) return '';
+
+      // alle Whitespaces inkl. Zeilenumbrüche entfernen
+      s = s.replace(/\s+/g, '');
+
+      // mehrere Kommas zusammenschmelzen
+      s = s.replace(/,+/g, ',');
+
+      // führende / trailing Kommas kappen
+      s = s.replace(/^,|,$/g, '');
+
+      return s;
+    }
+
+    function showSnack(text, ok=false){
+      snack.textContent = text;
+      snack.classList.toggle('ok', ok);
+      snack.classList.toggle('error', !ok);
+      snack.style.display = 'block';
+      setTimeout(()=> snack.style.display='none', 3000);
+    }
+
+    function hzIsInt(val){
+      if (val === '' || val === null) return false;
+      const n = Number(val);
+      return Number.isInteger(n) && n > 0;
+    }
+
+    // Comma/dot tolerant → normalize to dot
+    function normDec(str){
+      str = (str ?? '').toString().trim();
+      if (!str) return '';
+      let s = str.replace(',', '.').trim();
+      const sepIndex = Math.max(s.lastIndexOf(','), s.lastIndexOf('.'));
+      if (sepIndex === -1) return s;
+      const head = s.slice(0, sepIndex);
+      const sep  = s[sepIndex];
+      const tail = s.slice(sepIndex + 1);
+      const m = tail.match(/^\d+/);
+      const frac = (m ? m[0] : '').slice(0, 6);
+      return frac ? head + sep + frac : head;
+    }
+
+    function validate(){
+      msg.textContent = '';
+
+      // Callsign
+      const call = document.getElementById('Callsign').value.trim();
+      if (!/^[A-Za-z0-9/]{3,}$/.test(call)){
+        msg.innerHTML = `<span class="error">Invalid callsign.</span>`;
+        return false;
+      }
+
+      // Frequencies
+      for (const id of ['RXFrequency','TXFrequency']){
+        const el = document.getElementById(id);
+        const v = el.value.trim();
+        if (!hzIsInt(v)){
+          msg.innerHTML = `<span class="error">Frequencies must be integer Hz.</span>`;
+          return false;
+        }
+      }
+
+      // Coordinates
+      const lat = normDec(document.getElementById('Latitude').value);
+      const lon = normDec(document.getElementById('Longitude').value);
+      if (lat === '' || lon === '' || isNaN(Number(lat)) || isNaN(Number(lon))){
+        msg.innerHTML = `<span class="error">Invalid latitude/longitude.</span>`;
+        return false;
+      }
+
+      // Config password
+      const cfgPw = document.getElementById('ConfigPassword').value;
+      if (!cfgPw.trim()){
+        msg.innerHTML = `<span class="error">Config Password required.</span>`;
+        return false;
+      }
+
+      // Monitored Talkgroups prüfen (optional, nur wenn etwas drin steht)
+      const tgMonEl  = document.getElementById('TGMonitored');
+      const tgMonRaw = tgMonEl.value;
+      const tgMon    = normalizeTgList(tgMonRaw);
+
+      if (tgMon && !/^\d+(,\d+)*$/.test(tgMon)) {
+        msg.innerHTML = `<span class="error">Monitored: only comma separated numeric talkgroups allowed (e.g. 262,910,263).</span>`;
+        return false;
+      }
+
+      // wenn du magst, gleiches für TGDefault:
+      const tgDefEl  = document.getElementById('TGDefault');
+      if (tgDefEl) {
+        const tgDefRaw = tgDefEl.value;
+        const tgDef    = normalizeTgList(tgDefRaw);
+        if (tgDef && !/^\d+(,\d+)*$/.test(tgDef)) {
+          msg.innerHTML = `<span class="error">Default: only comma separated numeric talkgroups allowed (e.g. 262,2620).</span>`;
+          return false;
+        }
+      }
+
+      return true;
+    }
+
+    function serializeForm(form){
+      const fd = new FormData(form);
+
+      // Normalize coordinates before sending
+      fd.set('Latitude', normDec(fd.get('Latitude')));
+      fd.set('Longitude', normDec(fd.get('Longitude')));
+
+      // Normalize talkgroup lists before sending
+      const tgMon = normalizeTgList(fd.get('TGMonitored'));
+      fd.set('TGMonitored', tgMon);
+
+      const tgDef = normalizeTgList(fd.get('TGDefault'));
+      fd.set('TGDefault', tgDef);
+
+      return new URLSearchParams(fd).toString();
+    }
+
+    // Config-Passwort im Browser merken (wie im Original)
+    (function rememberConfigPw(){
+      const PW_KEY = 'openfm:config_password';
+      const form   = document.getElementById('cfgForm');
+      const pw     = document.getElementById('ConfigPassword');
+      if (!form || !pw) return;
+
+      try {
+        const stored = localStorage.getItem(PW_KEY);
+        if (stored && !pw.value) pw.value = stored;
+      } catch(e) { /* ignore */ }
+
+      form.addEventListener('submit', () => {
+        try { localStorage.setItem(PW_KEY, pw.value); } catch(e) { /* ignore */ }
+      });
+    })();
+
+    // Show/Hide fürs Config-Passwort
+    (function(){
+      const btn = document.getElementById('togglePw');
+      const inp = document.getElementById('ConfigPassword');
+      if (!btn || !inp) return;
+      btn.addEventListener('click', () => {
+        const isPw = inp.type === 'password';
+        inp.type = isPw ? 'text' : 'password';
+        btn.textContent = isPw ? '🙈 Hide' : '👁️ Show';
+        btn.setAttribute('aria-pressed', String(isPw));
+        const v = inp.value; inp.value = ''; inp.value = v;
+      });
+    })();
+
+    form.addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      if (!validate()){
+        state.textContent = 'error';
+        state.style.color = '#e5484d';
+        return;
+      }
+
+      // callsign in Uppercase
+      const el = document.getElementById('Callsign');
+      el.value = el.value.toLocaleUpperCase('de-DE').trim();
+
+      state.textContent = 'saving…';
+      state.style.color = '';
+
+      try{
+        const body = serializeForm(form);
+        const r = await fetch('save_config.php', {
+          method:'POST',
+          headers:{'Content-Type':'application/x-www-form-urlencoded'},
+          body
+        });
+        const data = await r.json().catch(()=>null);
+
+        if (r.ok && data && data.ok){
+          state.textContent = 'saved';
+          state.style.color = '#5cff89';
+          msg.innerHTML = `<span class="ok">OK – server accepted configuration data.</span>`;
+          showSnack('Configuration saved', true);
+          try { localStorage.setItem('openfm:cfg_saved', String(Date.now())); } catch {}
+
+          setTimeout(() => {
+            try {
+              if (window.opener && !window.opener.closed) {
+                window.opener.location.reload();
+              }
+            } catch (_) {}
+            try {
+              window.close();
+              location.href = 'index.html';
+            } catch (_) {}
+          }, 1500);
+        } else {
+          const errTxt = (data && data.error) ? data.error : (r.status+' '+r.statusText);
+          state.textContent = 'error';
+          state.style.color = '#e5484d';
+          msg.innerHTML = `<span class="error">Save failed: ${errTxt}</span>`;
+          showSnack('Save error');
+        }
+      } catch(ex){
+        state.textContent = 'error';
+        state.style.color = '#e5484d';
+        msg.innerHTML = `<span class="error">${ex}</span>`;
+        showSnack('Network error');
+      }
+    });
+
+    (async function preload() {
+      try {
+        const r = await fetch('api.php?q=config_inbox', { cache: 'no-store' });
+        if (!r.ok) return;
+        const d = await r.json();
+        if (!d || typeof d !== 'object') return;
+
+        const setVal = (id, key = id) => {
+          const el = document.getElementById(id);
+          if (!el) return;
+          const v = d[key];
+          if (v === undefined || v === null) return;
+          el.value = String(v);
+        };
+
+        // STATION
+        setVal('Callsign',   'Callsign');
+        setVal('Region',     'Region');
+        setVal('Location',   'Location');
+        setVal('Locator',    'Locator');
+        setVal('SYSOP',      'SYSOP');
+        setVal('Latitude',   'Latitude');
+        setVal('Longitude',  'Longitude');
+        setVal('URL',        'URL');
+        setVal('CTCSS',      'CTCSS');
+
+        // REPEATER / HOTSPOT
+        setVal('RXFrequency','RXFrequency');
+        setVal('TXFrequency','TXFrequency');
+        setVal('Network',    'Network');
+        setVal('CTCSSRepeater','CTCSSRepeater');
+
+        // TALKGROUPS
+        setVal('TGDefault',   'TGDefault');
+        setVal('TGMonitored', 'TGMonitored');
+
+        // wenn du später irgendwas mit updated_at anzeigen willst, ist es auch da:
+        // d.updated_at
+
+      } catch (e) {
+        console.error('preload config_inbox failed', e);
+      }
+    })();
+
+  </script>
+</body>
+</html>

@@ -28,6 +28,37 @@ public:
                     const std::string& rx_freq,
                     const std::string& tx_freq) noexcept;
 
+    // Config-Tabelle (immer nur eine Zeile, id=1)
+    bool upsertConfig(const std::string& callsign,
+                      const std::string& dnsDomain,
+                      int defaultTg,
+                      const std::string& monitorTgs) noexcept;
+
+    // Struktur für die config-Zeile
+    struct ConfigRow {
+        int         id = 0;
+        std::string callsign;
+        std::string dnsDomain;
+        int         defaultTg = 0;
+        std::string monitorTgs;
+
+        std::string Location;
+        std::string Locator;
+        std::string SysOp;
+        std::string LAT;
+        std::string LON;
+        std::string TXFREQ;
+        std::string RXFREQ;
+        std::string Website;
+        std::string nodeLocation;
+        std::string CTCSS;
+
+        std::string updatedAt; // "YYYY-MM-DD HH:MM:SS"
+    };
+
+    // NEU: config lesen (id=1)
+    bool getConfig(ConfigRow& out) noexcept;
+
 private:
     bool connect() noexcept;
     bool ensureSchema() noexcept;
@@ -56,7 +87,7 @@ private:
     std::mutex mtx_;
 
     const std::string dbUser_       = "svxlink";
-    const std::string dbPass_       = "";       
+    const std::string dbPass_       = "";
     const std::string dbName_       = "mmdvmdb";
     const std::string dbUnixSocket_ = "/run/mysqld/mysqld.sock";
     const unsigned int dbPort_      = 0; // 0 = über Unix-Socket

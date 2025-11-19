@@ -3,7 +3,7 @@ CXXFLAGS := -std=c++17 -O2 -Wall -Wextra -pedantic -MMD -MP
 LDFLAGS :=
 LDLIBS := -lmysqlclient -lmosquitto -lpthread
 
-SRC := main.cpp MqttListener.cpp fmdatabase.cpp
+SRC := main.cpp MqttListener.cpp fmdatabase.cpp handleConfig.cpp node_info_writer.cpp
 OBJ := $(SRC:.cpp=.o)
 DEP := $(OBJ:.o=.d)
 

@@ -1,3 +1,17 @@
+#!/usr/bin/env bash
+
+# (c) DJ0ABR
+# Unified installer for OpenFM on Debian x86_64
+# Usage: sudo ./install.sh
+
+set -euo pipefail
+set -o errtrace
+umask 022
+
+need_root() { [[ $(id -u) -eq 0 ]] || die "Please run as root"; }
+
+need_root
+
 # install packages
 apt update
 apt install \
@@ -23,8 +37,27 @@ FLUSH PRIVILEGES;
 EOSQL
 echo "MariaDB initialized."
 
+# copy GUI
+cp -R gui/html/* /var/www/html
+
+#make parser
+cd gui/parser
+make -j 4
+# set file permissions
+chown svxlink:svxlink /etc/svxlink/node_info.json
+chown svxlink:svxlink /etc/svxlink/svxlink.conf
+# allow user svxlink to restart the service
+SYSTEMCTL_BIN="$(command -v systemctl || echo /usr/bin/systemctl)"
+TMP_FILE="$(mktemp)"
+cat >"$TMP_FILE" <<EOF
+svxlink ALL=(root) NOPASSWD: $SYSTEMCTL_BIN restart svxlink.service
+EOF
+visudo -cf "$TMP_FILE"
+install -o root -g root -m 440 "$TMP_FILE" /etc/sudoers.d/svxlink-service
+rm -f "$TMP_FILE"
+
 # Service
-sudo install -m 644 fmparser.service /etc/systemd/system/fmparser.service
+sudo install -m 644 fmparser.service /etc/systemd/system/svxlink.service
 sudo systemctl daemon-reload
 sudo systemctl enable fmparser.service
 sudo systemctl start fmparser.service
