@@ -4,8 +4,10 @@
 
 **Aktuelle Version 1.0**
 
-Getestet auf: - Debian‑basierte Desktop‑Distributionen - Minimal‑Debian
-(nur Konsole) - Debian‑VM auf Proxmox
+Getestet auf: 
+- Debian‑basierte Desktop‑Distributionen 
+- Minimal‑Debian (nur Konsole) 
+- Debian‑VM auf Proxmox
 
 OpenFM ist ein Dashboard für **SVXLink von SM0SVX** und unterstützt das\
 **FM‑Funknetz von DJ1JAY**.
@@ -24,6 +26,16 @@ Station anpassen.
 -   Einstellungsmenü mit Passwortschutz für grundlegende Konfigurationen
 
 ------------------------------------------------------------------------
+
+<a href="gui.png">
+  <img src="gui.png" alt="Systemübersicht" width="250">
+</a>
+
+<a href="gui1.png">
+  <img src="gui1.png" alt="Systemübersicht" width="250">
+</a>
+
+🔗 **Live Installation:** [fm.db0sl.de](https://fm.db0sl.de/)
 
 ## 📊 Status
 

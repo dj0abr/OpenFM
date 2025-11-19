@@ -33,7 +33,7 @@ station.
   <img src="gui1.png" alt="Systemübersicht" width="250">
 </a>
 
-🔗 **Live Installation:** digital.db0sl.de
+🔗 **Live Installation:** [fm.db0sl.de](https://fm.db0sl.de/)
 
 ## 📊 Status
 
