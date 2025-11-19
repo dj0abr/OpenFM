@@ -493,8 +493,13 @@
               }
             } catch (_) {}
             try {
+              // benachrichtige index.html über: Config erfolgreich gespeichert
+              try {
+                localStorage.setItem('openfm:cfg_saved', String(Date.now()));
+              } catch (e) {
+                console.warn("Konnte openfm_config_version nicht in localStorage schreiben:", e);
+              }
               window.close();
-              location.href = 'index.html';
             } catch (_) {}
           }, 1500);
         } else {

@@ -12,25 +12,54 @@ function response(bool $ok, array $payload = []): void {
   exit;
 }
 
-/**
- * HART kodiertes Setup-Passwort.
- * Muss zum in setup.html eingegebenen "Config Password" passen.
- */
-$CONFIG_PASSWORD = 'setuppassword';
-
 // Nur POST akzeptieren
 if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
   http_response_code(405);
   response(false, ['error' => 'method not allowed']);
 }
 
+/* ======= DB-Verbindung (auch für Passwort) ======= */
+try {
+  $pdo = new PDO(
+    'mysql:unix_socket=/run/mysqld/mysqld.sock;dbname=mmdvmdb;charset=utf8mb4',
+    'www-data',
+    '',
+    [
+      PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+      PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+      PDO::ATTR_EMULATE_PREPARES   => false,
+    ]
+  );
+} catch (Throwable $e) {
+  http_response_code(500);
+  response(false, ['error' => 'DB connection failed']);
+}
+
+/**
+ * Setup-Passwort aus DB lesen.
+ * Fallback: 'setuppassword', falls nichts in der DB steht.
+ */
+$configPassword = 'setuppassword'; // Fallback, wenn in DB nichts gesetzt ist
+
+try {
+  $stmt = $pdo->prepare('SELECT setup_password FROM config WHERE id = 1');
+  $stmt->execute();
+  $row = $stmt->fetch();
+  if ($row && $row['setup_password'] !== null && $row['setup_password'] !== '') {
+    $configPassword = (string)$row['setup_password'];
+  }
+} catch (Throwable $e) {
+  // Wenn das Lesen fehlschlägt, lieber hart abbrechen
+  http_response_code(500);
+  response(false, ['error' => 'could not read setup password']);
+}
+
 /* ======= Passwort prüfen ======= */
 $givenPw = $_POST['ConfigPassword'] ?? '';
-if ($CONFIG_PASSWORD === '' || !hash_equals($CONFIG_PASSWORD, (string)$givenPw)) {
+if (!hash_equals($configPassword, (string)$givenPw)) {
   http_response_code(401);
   response(false, ['error' => 'auth required']);
 }
-// nie weiterverarbeiten
 unset($_POST['ConfigPassword']);
 
 /**
@@ -146,17 +175,6 @@ $website    = $data['URL']      !== '' ? $data['URL'] : null;
 
 /* ======= DB-Speichern ======= */
 try {
-  $pdo = new PDO(
-    'mysql:unix_socket=/run/mysqld/mysqld.sock;dbname=mmdvmdb;charset=utf8mb4',
-    'www-data',
-    '',
-    [
-      PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
-      PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-      PDO::ATTR_EMULATE_PREPARES   => false,
-    ]
-  );
-
   /**
    * Wir gehen von EINER Konfig-Zeile in `config` aus (id=1).
    * Single-row Upsert auf die bestehende Tabelle `config`.

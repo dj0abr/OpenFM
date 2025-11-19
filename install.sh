@@ -8,9 +8,11 @@ set -euo pipefail
 set -o errtrace
 umask 022
 
-need_root() { [[ $(id -u) -eq 0 ]] || die "Please run as root"; }
-
-need_root
+# Muss als root laufen (direkt oder via sudo)
+if [[ "$EUID" -ne 0 ]]; then
+  echo "Dieses Skript muss als root ausgeführt werden (sudo ./set-setup-password.sh)."
+  exit 1
+fi
 
 # install packages
 apt update

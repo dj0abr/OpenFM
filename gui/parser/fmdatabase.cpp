@@ -163,7 +163,7 @@ bool FMDatabase::ensureSchema() noexcept
         Website      VARCHAR(255)  NULL,
         nodeLocation VARCHAR(255)  NULL,
         CTCSS        VARCHAR(64)   NULL,
-
+        setup_password VARCHAR(255) NULL,
         updated_at   TIMESTAMP     NOT NULL
                     DEFAULT CURRENT_TIMESTAMP
                     ON UPDATE CURRENT_TIMESTAMP

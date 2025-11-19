@@ -69,6 +69,15 @@ After reboot, the services **svxlink** and **fmparser** start
 automatically, the database is created, and the system becomes fully
 operational.
 
+After the reboot (**not earlier!**), the setup password can be set.
+The default password is: **setuppassword**
+
+You can change it using this script:
+``` bash
+sudo ./set-setup-password.sh
+```
+This password is required to save the entries on the setup page.
+
 ## 🌐 Web Frontend
 
 The web interface displays all live operational data.

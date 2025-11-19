@@ -1701,6 +1701,11 @@
         });
       }
 
+      // auf Änderungen im localStorage reagieren (aus anderen Tabs/Fenstern)
+      window.addEventListener("storage", (event) => {
+        if (event.key !== "openfm:cfg_saved") return;
+        location.reload();
+      });
 
       // --- init --------------------------------------------------------------
 
@@ -1717,12 +1722,12 @@
       loadFmTopTalkgroups();
 
       // periodic refresh
-      setInterval(loadFmStatus, 5000);
-      setInterval(loadFmLastHeard, 5000);
+      setInterval(loadFmStatus, 1000);
+      setInterval(loadFmLastHeard, 1000);
       // Charts müssen nicht so oft, 1x pro Minute reicht
       setInterval(loadFmCallsignTop10Count, 60000);
       setInterval(loadFmCallsignTop10Duration, 60000);
-      setInterval(loadFmHeatmap, 60000); // alle 60s refresh
+      setInterval(loadFmHeatmap, 60000);
       setInterval(loadFmHallOfFameWeek, 60000);
       setInterval(loadFmTopTalkgroups, 60000);
 

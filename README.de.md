@@ -71,6 +71,15 @@ Nach dem Neustart laufen die Dienste **svxlink** und **fmparser**
 automatisch, die Datenbank wird angelegt und das System ist vollständig
 betriebsbereit.
 
+Nach dem Neustart (**nicht früher!**) kann das Setup-Passwort gesetzt werden.
+Das Default Passwort ist: **setuppassword**
+
+Mit diesem Script kann es geändert werden:
+``` bash
+sudo ./set-setup-password.sh
+```
+Dieses Passwort wird benötigt um die Eingaben der Setup-Seite speichern zu können.
+
 ## 🌐 Web‑Frontend
 
 Das Webinterface zeigt alle Live‑Betriebsdaten an.
