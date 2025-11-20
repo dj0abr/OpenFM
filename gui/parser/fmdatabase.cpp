@@ -345,6 +345,42 @@ bool FMDatabase::insertEvent(const std::string& timeStr,
         tgInt = 0;
     }
 
+    //
+    // NEU: doppelte "stop"-Events für ein Callsign verhindern
+    //
+    if (talk == "stop") {
+        std::string qLast =
+            "SELECT talk FROM fmlastheard "
+            "WHERE callsign='" + callE + "' "
+            "ORDER BY id DESC "
+            "LIMIT 1";
+
+        if (mysql_query(conn_, qLast.c_str()) != 0) {
+            lastError_ = mysql_error(conn_);
+            std::fprintf(stderr, "[FMDB] insertEvent: query last talk failed: %s\n",
+                         lastError_.c_str());
+            // im Zweifel lieber trotzdem weitermachen und den Stop loggen
+        } else {
+            MYSQL_RES* res = mysql_store_result(conn_);
+            if (res) {
+                MYSQL_ROW row = mysql_fetch_row(res);
+                if (row && row[0]) {
+                    std::string lastTalk = row[0];
+                    if (lastTalk == "stop") {
+                        // Zweiter stop hintereinander -> ignorieren
+                        mysql_free_result(res);
+                        // fmstatus ist ohnehin schon "nicht aktiv", also updateStatus hier NICHT aufrufen
+                        return true;
+                    }
+                }
+                mysql_free_result(res);
+            }
+        }
+    }
+
+    //
+    // normaler INSERT, wenn wir hier sind
+    //
     std::ostringstream oss;
     oss << "INSERT INTO fmlastheard (event_time, talk, callsign, tg, server) VALUES ("
         << "'" << escape(dt)   << "',"
@@ -352,7 +388,7 @@ bool FMDatabase::insertEvent(const std::string& timeStr,
         << "'" << callE        << "',"
         <<      tgInt          << ","
         << "'" << srvE         << "')";
-    
+
     if (mysql_query(conn_, oss.str().c_str()) != 0) {
         lastError_ = mysql_error(conn_);
         std::fprintf(stderr, "[FMDB] INSERT fmlastheard failed: %s\n", lastError_.c_str());
