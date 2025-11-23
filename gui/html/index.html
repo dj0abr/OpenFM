@@ -19,32 +19,65 @@
     ></script>
 
     <style>
-      :root {
+        :root {
+            /* LIGHT THEME */
+            --bg: #e0e4eb;        /* leichtes Grau-Blau */
+            --fg: #111827;
+            --muted: #374151;
+            --border: #cbd5e1;
+            --tile: #ffffff;      /* Kacheln bleiben weiß */
+            --tile-alt: #edf1f7;
+              /* Active-Tile im LIGHT-Mode: sanftes Rot/Rosa */
+            --active-bg: #faacac;                /* ganz helles Rot */
+            --active-border: #ef4444;            /* Tailwind-rot-500 Style */
+            --active-shadow: 0 0 18px rgba(168, 10, 10, 0.75) inset;
+            /* Charts (Light) */
+            --chart-grid: rgba(0, 0, 0, 0.08);   /* Achsenlinien */
+            --chart-tick: #111827;               /* Achsenbeschriftung */
+            --chart-legend: #111827;             /* Legenden-Text */
+            --chart-bar: #3b82f6;                /* Balken, kräftiges Blau */
+            }
+
+
+        /* Dark Theme – entspricht deinem bisherigen Look */
+        :root[data-theme="dark"] {
         --bg: #0b0c10;
         --fg: #eaf0f1;
         --muted: #9aa3a7;
         --border: #1a1f24;
         --tile: #222831;
         --tile-alt: #1d232c;
-      }
+
+        --bg-grad-top: #0b0c10;
+        --bg-grad-bottom: #0f1419;
+        /* Active-Tile im DARK-Mode: dein ursprüngliches Rot */
+        --active-bg: #b00020;
+        --active-border: #e5484d;
+        --active-shadow: 0 0 24px #e5484d33 inset;
+          /* Charts (Dark) */
+        --chart-grid: rgba(255, 255, 255, 0.08);
+        --chart-tick: #eaf0f1;
+        --chart-legend: #eaf0f1;
+        --chart-bar: #60a5fa;                /* etwas helleres Blau */
+        }
 
       * {
         box-sizing: border-box;
       }
 
-      body {
+        body {
         margin: 0;
         color: var(--fg);
-        background: linear-gradient(180deg, #0b0c10, #0f1419 260px);
+        background: var(--bg);          /* hier hängt alles an --bg */
         font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, "Open Sans",
-          "Helvetica Neue", Arial, sans-serif;
-      }
+            "Helvetica Neue", Arial, sans-serif;
+        }
 
-      header {
+        header {
         position: sticky;
         top: 0;
         backdrop-filter: blur(8px);
-        background: #0006;
+        background: #0006;   /* wird für DarkTheme gleich überschrieben */
         border-bottom: 1px solid var(--border);
         padding: 18px 20px;
         display: flex;
@@ -52,7 +85,12 @@
         align-items: center;
         flex-direction: column;
         text-align: center;
-      }
+        }
+
+        /* Light-Theme-Header */
+        :root:not([data-theme="dark"]) header {
+        background: rgba(200, 200, 220, 0.75);
+        }
 
       header h1 {
         margin: 0;
@@ -239,11 +277,11 @@
         padding: 14px;
       }
 
-      .active-tile {
-        background: #b00020;
-        border-color: #e5484d;
-        box-shadow: 0 0 24px #e5484d33 inset;
-      }
+        .active-tile {
+        background: var(--active-bg);
+        border-color: var(--active-border);
+        box-shadow: var(--active-shadow);
+        }
 
       .fm-location {
         font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, "Open Sans",
@@ -380,19 +418,117 @@
       .lh-compact-label input[type="checkbox"] {
         transform: scale(0.9);
       }
+
+      .lh-second-right {
+        font-size: 11px;
+        color: #ffd54f;     /* gelb */
+        min-height: 18px;
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        flex: 1;
+      }
+
+      @media (max-width: 600px) {
+        /* Gilt für LAST HEARD und ACTIVE STATIONS */
+        #lhList .fm-item,
+        #activeList .fm-item {
+          display: grid;
+          grid-template-columns: 1.2fr 1.2fr;
+          grid-template-areas:
+            "cs time"
+            "loc loc"
+            "tg  tgl";
+          row-gap: 4px;
+          padding: 10px 0;
+        }
+
+        #lhList .fm-item .fm-cs,
+        #activeList .fm-item .fm-cs {
+          grid-area: cs;
+        }
+
+        #lhList .fm-item .fm-location,
+        #activeList .fm-item .fm-location {
+          grid-area: loc;
+        }
+
+        #lhList .fm-item .fm-time,
+        #activeList .fm-item .fm-time {
+          grid-area: time;
+        }
+
+        #lhList .fm-item .fm-tg,
+        #activeList .fm-item .fm-tg {
+          grid-area: tg;
+          text-align: left;
+        }
+
+        #lhList .fm-item .fm-tg-label,
+        #activeList .fm-item .fm-tg-label {
+          grid-area: tgl;
+        }
+
+        #lhList .fm-item .fm-location,
+        #lhList .fm-item .fm-time,
+        #lhList .fm-item .fm-tg,
+        #lhList .fm-item .fm-tg-label,
+        #activeList .fm-item .fm-location,
+        #activeList .fm-item .fm-time,
+        #activeList .fm-item .fm-tg,
+        #activeList .fm-item .fm-tg-label {
+          font-size: 12px;
+        }
+      }
+
+        .theme-toggle {
+        position: absolute;
+        top: 12px;
+        left: 14px;
+        padding: 6px 10px;
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--fg);
+        background: var(--tile-alt);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        text-decoration: none;
+        box-shadow: 0 1px 0 #0004 inset;
+        cursor: pointer;
+        transition: transform 0.08s ease, background-color 0.15s ease,
+            border-color 0.15s ease;
+        }
+
+        .theme-toggle:hover {
+        background: #e5e7eb33; /* im Darkmode leichtes Highlight, im Lightmode unauffällig */
+        }
+
+        .theme-toggle:active {
+        transform: translateY(1px);
+        }
+
+        .theme-toggle:focus-visible {
+        outline: 2px solid #acf8ff;
+        outline-offset: 2px;
+        }
+
     </style>
   </head>
 
   <body>
     <header>
-      <a href="setup.html" class="setup-btn" aria-label="Setup" target="_blank">⚙️ Setup</a>
-      <div>
-        <h1 id="title">OpenFM FM-Funknetz</h1>
-        <div class="subline" id="subline">
-          OpenFM by DJ0ABR (SVXlink by SM0SVX, FM-Funknetz by DJ1JAY) RX – TX –
+        <a href="setup.html" class="setup-btn" aria-label="Setup" target="_blank">⚙️ Setup</a>
+        <button id="themeToggle" class="theme-toggle" type="button" aria-label="Theme umschalten">
+            ☀️ Light
+        </button>
+        <div>
+            <h1 id="title">OpenFM FM-Funknetz</h1>
+            <div class="subline" id="subline">
+            OpenFM by DJ0ABR (SVXlink by SM0SVX, FM-Funknetz by DJ1JAY) RX – TX –
+            </div>
         </div>
-      </div>
     </header>
+
 
     <main>
       <!-- TILE 0: FILTER -->
@@ -417,22 +553,27 @@
 
         <!-- Zeile 2: Last-Heard Einstellungen -->
         <div class="filter-second-row">
-        <label class="lh-rows-label">
-          Last Heard:
-          <select id="lhRowsSelect" class="lh-rows-select">
-            <option value="5">5 Lines</option>
-            <option value="10">10 Lines</option>
-            <option value="15">15 Lines</option>
-            <option value="20">20 Lines</option>
-            <option value="25">25 Lines</option>
-          </select>
-        </label>
+          <label class="lh-rows-label">
+            Last Heard:
+            <select id="lhRowsSelect" class="lh-rows-select">
+              <option value="5">5 Lines</option>
+              <option value="10">10 Lines</option>
+              <option value="15">15 Lines</option>
+              <option value="20">20 Lines</option>
+              <option value="25">25 Lines</option>
+            </select>
+          </label>
 
-        <label class="lh-compact-label">
-          <input type="checkbox" id="lhCompactCheckbox" />
-          skip repeats
-        </label>
-      </div>
+          <label class="lh-compact-label">
+            <input type="checkbox" id="lhCompactCheckbox" />
+            skip repeats
+          </label>
+
+          <!-- Rechts daneben der Platz für den TG-Namen beim Hover -->
+          <div class="lh-second-right">
+            <span id="tgHoverInfo"></span>
+          </div>
+        </div>
       </section>
 
       <!-- TILE 1: ACTIVE STATIONS -->
@@ -509,7 +650,70 @@
     </footer>
 
     <script>
-      let fmTopTgChart = null;
+        function getChartColors() {
+            const cs = getComputedStyle(document.documentElement);
+            return {
+                grid: cs.getPropertyValue("--chart-grid").trim(),
+                ticks: cs.getPropertyValue("--chart-tick").trim(),
+                legend: cs.getPropertyValue("--chart-legend").trim(),
+                bar: cs.getPropertyValue("--chart-bar").trim(),
+            };
+        }
+
+        const THEME_KEY = "openfmTheme";
+
+    function applyTheme(theme) {
+        const root = document.documentElement;
+
+        if (theme === "light") {
+            root.setAttribute("data-theme", "light");
+        } else {
+            // Fallback = dark
+            theme = "dark";
+            root.setAttribute("data-theme", "dark");
+        }
+
+        const btn = document.getElementById("themeToggle");
+        if (btn) {
+            btn.textContent = theme === "dark" ? "☀️ Light" : "🌙 Dark";
+        }
+
+        try {
+            localStorage.setItem(THEME_KEY, theme);
+        } catch (e) {
+            console.warn("Theme konnte nicht in localStorage gespeichert werden:", e);
+        }
+
+        refreshChartTheme();
+    }
+
+    function initThemeToggle() {
+        let stored = "dark";
+        try {
+            stored = localStorage.getItem(THEME_KEY) || "dark";
+        } catch (e) {
+            console.warn("Theme konnte nicht aus localStorage gelesen werden:", e);
+        }
+
+       applyTheme(stored);
+
+        const btn = document.getElementById("themeToggle");
+        if (!btn) return;
+
+        btn.addEventListener("click", () => {
+            const current =
+            document.documentElement.getAttribute("data-theme") === "light"
+                ? "light"
+                : "dark";
+            const next = current === "dark" ? "light" : "dark";
+            applyTheme(next);
+        });
+    }
+
+    // sofort aufrufen, Script ist am Ende des Body → DOM ist da
+    initThemeToggle();
+
+      var fmTopTgChart = null;
 
       async function loadFmTopTalkgroups() {
         try {
@@ -532,6 +736,8 @@
               .getElementById("fmTopTgChart")
               .getContext("2d");
 
+            const c = getChartColors();
+
             fmTopTgChart = new Chart(ctx, {
               type: "bar",
               data: {
@@ -541,6 +747,8 @@
                     label: "Transmissions per TG (global)",
                     data,
                     borderWidth: 1,
+                    backgroundColor: c.bar,
+                    borderColor: c.bar,
                   },
                 ],
               },
@@ -549,9 +757,9 @@
                 maintainAspectRatio: false,
                 scales: {
                   x: {
-                    grid: { color: "rgba(255,255,255,.08)" },
+                    grid: { color: c.grid },
                     ticks: {
-                      color: "#eaf0f1",
+                      color: c.ticks,
                       maxRotation: 90,
                       minRotation: 90,
                       autoSkip: false,
@@ -559,12 +767,12 @@
                   },
                   y: {
                     beginAtZero: true,
-                    grid: { color: "rgba(255,255,255,.08)" },
-                    ticks: { precision: 0, color: "#eaf0f1" },
+                    grid: { color: c.grid },
+                    ticks: { precision: 0, color: c.ticks },
                   },
                 },
                 plugins: {
-                  legend: { labels: { color: "#eaf0f1" } },
+                  legend: { labels: { color: c.legend } },
                   tooltip: {
                     callbacks: {
                       afterBody: (items) => {
@@ -648,7 +856,7 @@
         }
       }
 
-      let fmHallOfFameChart = null;
+      var fmHallOfFameChart = null;
 
       async function loadFmHallOfFameWeek() {
         try {
@@ -678,15 +886,19 @@
               .getElementById("fmHallOfFameChart")
               .getContext("2d");
 
+              const c = getChartColors();
+
             fmHallOfFameChart = new Chart(ctx, {
               type: "bar",
               data: {
                 labels,
                 datasets: [
                   {
-                    label: "Score (last 7 days)",
+                    label: "Score (last 30 days)",
                     data,
                     borderWidth: 1,
+                    backgroundColor: c.bar,
+                    borderColor: c.bar,
                   },
                 ],
               },
@@ -695,9 +907,9 @@
                 maintainAspectRatio: false,
                 scales: {
                   x: {
-                    grid: { color: "rgba(255,255,255,0.08)" },
+                    grid: { color: c.grid },
                     ticks: {
-                      color: "#eaf0f1",
+                      color: c.ticks,
                       maxRotation: 90,
                       minRotation: 90,
                       autoSkip: false,
@@ -705,12 +917,12 @@
                   },
                   y: {
                     beginAtZero: true,
-                    grid: { color: "rgba(255,255,255,0.08)" },
-                    ticks: { color: "#eaf0f1" },
+                    grid: { color: c.grid },
+                    ticks: { color: c.ticks },
                   },
                 },
                 plugins: {
-                  legend: { labels: { color: "#eaf0f1" } },
+                  legend: { labels: { color: c.legend } },
                   tooltip: {
                     callbacks: {
                       afterBody: (items) => {
@@ -964,9 +1176,9 @@
 
     // --- Chart: Top 10 Callsigns (Count / Duration) -----------------------
 
-      let fmCallsignTop10DurationChart = null;
+      var fmCallsignTop10DurationChart = null;
 
-      let fmCallsignTop10CountChart = null;
+      var fmCallsignTop10CountChart = null;
 
       async function loadFmCallsignTop10Count() {
         try {
@@ -998,6 +1210,8 @@
               .getElementById("fmCallsignTop10CountChart")
               .getContext("2d");
 
+              const c = getChartColors();
+
             fmCallsignTop10CountChart = new Chart(ctx, {
               type: "bar",
               data: {
@@ -1007,6 +1221,8 @@
                     label: "Transmissions",
                     data,
                     borderWidth: 1,
+                    backgroundColor: c.bar,
+                    borderColor: c.bar,
                   },
                 ],
               },
@@ -1015,9 +1231,9 @@
                 maintainAspectRatio: false,
                 scales: {
                   x: {
-                    grid: { color: "rgba(255,255,255,.08)" },
+                    grid: { color: c.grid },
                     ticks: {
-                      color: "#eaf0f1",
+                      color: c.ticks,
                       maxRotation: 90,
                       minRotation: 90,
                       autoSkip: false,
@@ -1025,12 +1241,12 @@
                   },
                   y: {
                     beginAtZero: true,
-                    grid: { color: "rgba(255,255,255,.08)" },
-                    ticks: { precision: 0, color: "#eaf0f1" },
+                    grid: { color: c.grid },
+                    ticks: { precision: 0, color: c.ticks },
                   },
                 },
                 plugins: {
-                  legend: { labels: { color: "#eaf0f1" } },
+                  legend: { labels: { color: c.legend } },
                   tooltip: { enabled: true },
                 },
               },
@@ -1075,6 +1291,8 @@
               .getElementById("fmCallsignTop10DurationChart")
               .getContext("2d");
 
+              const c = getChartColors();
+
             fmCallsignTop10DurationChart = new Chart(ctx, {
               type: "bar",
               data: {
@@ -1084,6 +1302,8 @@
                     label: "Seconds",
                     data,
                     borderWidth: 1,
+                    backgroundColor: c.bar,
+                    borderColor: c.bar,
                   },
                 ],
               },
@@ -1092,9 +1312,9 @@
                 maintainAspectRatio: false,
                 scales: {
                   x: {
-                    grid: { color: "rgba(255,255,255,.08)" },
+                    grid: { color: c.grid },
                     ticks: {
-                      color: "#eaf0f1",
+                      color: c.ticks,
                       maxRotation: 90,
                       minRotation: 90,
                       autoSkip: false,
@@ -1102,12 +1322,12 @@
                   },
                   y: {
                     beginAtZero: true,
-                    grid: { color: "rgba(255,255,255,.08)" },
-                    ticks: { color: "#eaf0f1" },
+                    grid: { color: c.grid },
+                    ticks: { color: c.ticks },
                   },
                 },
                 plugins: {
-                  legend: { labels: { color: "#eaf0f1" } },
+                  legend: { labels: { color: c.legend } },
                   tooltip: {
                     callbacks: {
                       label: (ctx) =>
@@ -1128,6 +1348,55 @@
       }
 
       // --- helpers -----------------------------------------------------------
+      function setupMonitorTgHover() {
+        const info = document.getElementById("tgHoverInfo");
+        if (!info) return;
+
+        const pills = document.querySelectorAll(".monitor-tg-pill");
+        let lastTgShown = null;
+
+        pills.forEach((pill) => {
+          const showInfo = () => {
+            const tg = pill.dataset.tg;
+            const raw = tgLabel ? tgLabel(tg) : null;
+
+            let labelText = "";
+            if (raw) {
+              labelText = raw
+                .replace(/\bRegion\b/gi, "")
+                .replace(/\s{2,}/g, " ")
+                .trim();
+            }
+
+            info.textContent = labelText
+              ? `TG ${tg} – ${labelText}`
+              : `TG ${tg}`;
+
+            lastTgShown = tg;
+          };
+
+          const clearInfo = () => {
+            info.textContent = "";
+            lastTgShown = null;
+          };
+
+          // Desktop-Hover
+          pill.addEventListener("mouseenter", showInfo);
+          pill.addEventListener("mouseleave", clearInfo);
+
+          // Mobile / Tap: toggeln
+          pill.addEventListener("click", (ev) => {
+            ev.preventDefault(); // verhindert ggf. Text-Selektion o.Ä.
+
+            const tg = pill.dataset.tg;
+            if (lastTgShown === tg) {
+              clearInfo();
+            } else {
+              showInfo();
+            }
+          });
+        });
+      }
 
       // --- Talkgroup-Name Cache ---------------------------------------------
       let tgNames = null; // Map: tgNum (String) -> Label
@@ -1556,12 +1825,27 @@
           }
 
           const monLabel = document.getElementById("monitorTgsLabel");
-          if (monLabel) {
-            monLabel.textContent =
-              monitorTgs.length > 0
-                ? monitorTgs.join(", ")
-                : "–";
-          }
+            if (monLabel) {
+              monLabel.innerHTML = "";
+
+              if (monitorTgs.length > 0) {
+                monitorTgs.forEach((tg, idx) => {
+                  if (idx > 0) {
+                    monLabel.appendChild(document.createTextNode(", "));
+                  }
+                  const span = document.createElement("span");
+                  span.className = "monitor-tg-pill";
+                  span.dataset.tg = String(tg);
+                  span.textContent = tg;
+                  monLabel.appendChild(span);
+                });
+
+                // Hover-Events für die neuen Elemente aktivieren
+                setupMonitorTgHover();
+              } else {
+                monLabel.textContent = "–";
+              }
+            }
         } catch (e) {
           console.error(e);
         }
@@ -1707,6 +1991,50 @@
         location.reload();
       });
 
+      function refreshChartTheme() {
+        const c = getChartColors();
+        const charts = [
+            fmTopTgChart,
+            fmHallOfFameChart,
+            fmCallsignTop10CountChart,
+            fmCallsignTop10DurationChart,
+        ];
+
+        charts.forEach((ch) => {
+            if (!ch) return;
+
+            if (ch.options && ch.options.scales) {
+            if (ch.options.scales.x) {
+                if (ch.options.scales.x.grid) ch.options.scales.x.grid.color = c.grid;
+                if (ch.options.scales.x.ticks) ch.options.scales.x.ticks.color = c.ticks;
+            }
+            if (ch.options.scales.y) {
+                if (ch.options.scales.y.grid) ch.options.scales.y.grid.color = c.grid;
+                if (ch.options.scales.y.ticks) ch.options.scales.y.ticks.color = c.ticks;
+            }
+            }
+
+            if (
+            ch.options &&
+            ch.options.plugins &&
+            ch.options.plugins.legend &&
+            ch.options.plugins.legend.labels
+            ) {
+            ch.options.plugins.legend.labels.color = c.legend;
+            }
+
+            if (ch.data && Array.isArray(ch.data.datasets)) {
+            ch.data.datasets.forEach((ds) => {
+                ds.backgroundColor = c.bar;
+                ds.borderColor = c.bar;
+            });
+            }
+
+            ch.update();
+        });
+      }
+
+
       // --- init --------------------------------------------------------------
 
       initFilterControls();
@@ -1723,7 +2051,7 @@
 
       // periodic refresh
       setInterval(loadFmStatus, 1000);
-      setInterval(loadFmLastHeard, 1000);
+      setInterval(loadFmLastHeard, 3000);
       // Charts müssen nicht so oft, 1x pro Minute reicht
       setInterval(loadFmCallsignTop10Count, 60000);
       setInterval(loadFmCallsignTop10Duration, 60000);

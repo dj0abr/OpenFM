@@ -91,6 +91,4 @@ private:
     const std::string dbName_       = "mmdvmdb";
     const std::string dbUnixSocket_ = "/run/mysqld/mysqld.sock";
     const unsigned int dbPort_      = 0; // 0 = über Unix-Socket
-
-    static constexpr unsigned long MAX_ROWS_ = 5000;      // Limit fmlastheard
 };

@@ -85,7 +85,7 @@ bool FMDatabase::ensureSchema() noexcept
         return false;
     }
 
-    // fmlastheard: komplette Historie (limitiert über MAX_ROWS_)
+    // fmlastheard: Historie, per Zeitfenster (z.B. 50 Tage) begrenzt
     static const char* q1 =
         "CREATE TABLE IF NOT EXISTS fmlastheard ("
         "  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,"
@@ -228,35 +228,15 @@ bool FMDatabase::pruneIfNeeded() noexcept
 {
     if (!conn_) return false;
 
-    if (mysql_query(conn_, "SELECT COUNT(*) FROM fmlastheard") != 0) {
+    // alles löschen, was älter als 50 Tage ist
+    static const char* q =
+        "DELETE FROM fmlastheard "
+        "WHERE event_time < (NOW() - INTERVAL 365 DAY)";
+
+    if (mysql_query(conn_, q) != 0) {
         lastError_ = mysql_error(conn_);
-        std::fprintf(stderr, "[FMDB] COUNT(*) failed: %s\n", lastError_.c_str());
-        return false;
-    }
-
-    MYSQL_RES* res = mysql_store_result(conn_);
-    if (!res) {
-        lastError_ = mysql_error(conn_);
-        std::fprintf(stderr, "[FMDB] store_result failed: %s\n", lastError_.c_str());
-        return false;
-    }
-
-    MYSQL_ROW row = mysql_fetch_row(res);
-    unsigned long long cnt = (row && row[0]) ? std::strtoull(row[0], nullptr, 10) : 0ULL;
-    mysql_free_result(res);
-
-    if (cnt <= MAX_ROWS_) {
-        return true;
-    }
-
-    unsigned long long toDelete = cnt - MAX_ROWS_;
-
-    std::ostringstream oss;
-    oss << "DELETE FROM fmlastheard ORDER BY event_time ASC LIMIT " << toDelete;
-
-    if (mysql_query(conn_, oss.str().c_str()) != 0) {
-        lastError_ = mysql_error(conn_);
-        std::fprintf(stderr, "[FMDB] prune DELETE failed: %s\n", lastError_.c_str());
+        std::fprintf(stderr, "[FMDB] pruneIfNeeded (365 days) failed: %s\n",
+                     lastError_.c_str());
         return false;
     }
 
@@ -346,7 +326,7 @@ bool FMDatabase::insertEvent(const std::string& timeStr,
     }
 
     //
-    // NEU: doppelte "stop"-Events für ein Callsign verhindern
+    // doppelte "stop"-Events für ein Callsign verhindern
     //
     if (talk == "stop") {
         std::string qLast =
@@ -381,18 +361,22 @@ bool FMDatabase::insertEvent(const std::string& timeStr,
     //
     // normaler INSERT, wenn wir hier sind
     //
-    std::ostringstream oss;
-    oss << "INSERT INTO fmlastheard (event_time, talk, callsign, tg, server) VALUES ("
-        << "'" << escape(dt)   << "',"
-        << "'" << talkE        << "',"
-        << "'" << callE        << "',"
-        <<      tgInt          << ","
-        << "'" << srvE         << "')";
+    if (callE.rfind("TG", 0) == std::string::npos) {
+        // beginnt NICHT mit "TG"
+        // verhindert dass die lästigen TG2328 die Liste verstopfen
+        std::ostringstream oss;
+        oss << "INSERT INTO fmlastheard (event_time, talk, callsign, tg, server) VALUES ("
+            << "'" << escape(dt)   << "',"
+            << "'" << talkE        << "',"
+            << "'" << callE        << "',"
+            <<      tgInt          << ","
+            << "'" << srvE         << "')";
 
-    if (mysql_query(conn_, oss.str().c_str()) != 0) {
-        lastError_ = mysql_error(conn_);
-        std::fprintf(stderr, "[FMDB] INSERT fmlastheard failed: %s\n", lastError_.c_str());
-        return false;
+        if (mysql_query(conn_, oss.str().c_str()) != 0) {
+            lastError_ = mysql_error(conn_);
+            std::fprintf(stderr, "[FMDB] INSERT fmlastheard failed: %s\n", lastError_.c_str());
+            return false;
+        }
     }
 
     // fmstatus für "start"/"stop" pflegen
