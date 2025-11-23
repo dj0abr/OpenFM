@@ -7,20 +7,51 @@
   <meta http-equiv="Cache-Control" content="no-store, must-revalidate" />
 
   <style>
-    :root{
-      --bg:#0b0c10; --fg:#eaf0f1; --muted:#9aa3a7; --border:#1a1f24;
-      --tile:#222831; --tile-alt:#1d232c; --ok:#28a745; --warn:#e5a70a; --err:#e5484d;
+    :root {
+    /* LIGHT THEME */
+    --bg: #e0e4eb;
+    --fg: #111827;
+    --muted: #374151;
+    --border: #cbd5e1;
+    --tile: #ffffff;
+    --tile-alt: #edf1f7;
+    --ok: #16a34a;
+    --warn: #e5a70a;
+    --err: #b91c1c;
     }
+
+    /* DARK THEME – entspricht ungefähr deinem bisherigen Look */
+    :root[data-theme="dark"] {
+    --bg:#0b0c10;
+    --fg:#eaf0f1;
+    --muted:#9aa3a7;
+    --border:#1a1f24;
+    --tile:#222831;
+    --tile-alt:#1d232c;
+    --ok:#28a745;
+    --warn:#e5a70a;
+    --err:#e5484d;
+    }
+
     *{box-sizing:border-box}
     body{
-      margin:0; color:var(--fg);
-      background:linear-gradient(180deg,#0b0c10,#0f1419 260px);
-      font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Open Sans","Helvetica Neue",Arial,sans-serif;
+    margin:0;
+    color:var(--fg);
+    background:var(--bg); /* vorher: linear-gradient(...) */
+    font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Open Sans","Helvetica Neue",Arial,sans-serif;
     }
+
     header{
-      position:sticky; top:0; backdrop-filter:blur(8px); background:#0006;
-      border-bottom:1px solid var(--border); padding:18px 20px; text-align:center;
+    position:sticky; top:0; backdrop-filter:blur(8px); 
+    background:#0006;
+    border-bottom:1px solid var(--border); padding:18px 20px; text-align:center;
     }
+
+    /* Light-Theme-Header */
+    :root:not([data-theme="dark"]) header {
+    background: rgba(200, 200, 220, 0.85);
+    }
+
     header h1{margin:0; font-size:28px; letter-spacing:.2px}
     main{max-width:980px; margin:0 auto; padding:20px}
     .grid{display:grid; gap:18px; grid-template-columns:1fr 1fr}
@@ -59,13 +90,30 @@
       border:1px solid var(--border); background:var(--tile-alt); color:var(--fg);
       padding:10px 14px; border-radius:12px; cursor:pointer; font-weight:600;
     }
-    button.primary{
-      background: linear-gradient(180deg, #2a3440, #1f2832);
-      border-color:#365068;
-      box-shadow: 0 0 0 0 rgba(0,0,0,0), 0 8px 20px #0005 inset;
+    /* LIGHT THEME – heller Button */
+    button.primary {
+    background: linear-gradient(180deg, #e5e7eb, #d1d5db);
+    border-color: #9ca3af;
+    color: #111827;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.08);
     }
-    button.primary:hover{ transform: translateY(-1px); }
-    button.primary:active{ transform: translateY(0); }
+
+    button.primary:hover {
+    transform: translateY(-1px);
+    background: linear-gradient(180deg, #f3f4f6, #e5e7eb);
+    }
+
+    button.primary:active {
+    transform: translateY(0);
+    }
+
+    /* DARK THEME – dein alter Style */
+    :root[data-theme="dark"] button.primary {
+    background: linear-gradient(180deg, #2a3440, #1f2832);
+    border-color: #365068;
+    box-shadow: 0 0 0 0 rgba(0,0,0,0), 0 8px 20px #0005 inset;
+    color: #eaf0f1;
+    }
 
     .badge{
       display:inline-block; border:1px solid var(--border); background:var(--tile-alt);
@@ -294,10 +342,32 @@
   <div id="snack" class="snackbar"></div>
 
   <footer class="footer-note">
-    OpenFM Config • Dark UI • Client-side validation. Server validates again.
+    OpenFM Config • Light/Dark UI • Client-side validation. Server validates again.
   </footer>
 
   <script>
+    const THEME_KEY = "openfmTheme";
+
+    function applyStoredTheme() {
+    let theme = "dark";
+    try {
+        const stored = localStorage.getItem(THEME_KEY);
+        if (stored === "light" || stored === "dark") {
+        theme = stored;
+        }
+    } catch (e) {
+        // wenn localStorage nicht geht → einfach dark
+    }
+
+    document.documentElement.setAttribute(
+        "data-theme",
+        theme === "light" ? "light" : "dark"
+    );
+    }
+
+    // direkt beim Laden anwenden
+    applyStoredTheme();
+
     const form = document.getElementById('cfgForm');
     const msg  = document.getElementById('msg');
     const snack= document.getElementById('snack');

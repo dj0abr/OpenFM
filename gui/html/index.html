@@ -19,24 +19,24 @@
     ></script>
 
     <style>
-        :root {
-            /* LIGHT THEME */
-            --bg: #e0e4eb;        /* leichtes Grau-Blau */
-            --fg: #111827;
-            --muted: #374151;
-            --border: #cbd5e1;
-            --tile: #ffffff;      /* Kacheln bleiben weiß */
-            --tile-alt: #edf1f7;
-              /* Active-Tile im LIGHT-Mode: sanftes Rot/Rosa */
-            --active-bg: #faacac;                /* ganz helles Rot */
-            --active-border: #ef4444;            /* Tailwind-rot-500 Style */
-            --active-shadow: 0 0 18px rgba(168, 10, 10, 0.75) inset;
-            /* Charts (Light) */
-            --chart-grid: rgba(0, 0, 0, 0.08);   /* Achsenlinien */
-            --chart-tick: #111827;               /* Achsenbeschriftung */
-            --chart-legend: #111827;             /* Legenden-Text */
-            --chart-bar: #3b82f6;                /* Balken, kräftiges Blau */
-            }
+      :root {
+          /* LIGHT THEME */
+          --bg: #e0e4eb;        /* leichtes Grau-Blau */
+          --fg: #111827;
+          --muted: #374151;
+          --border: #cbd5e1;
+          --tile: #ffffff;      /* Kacheln bleiben weiß */
+          --tile-alt: #edf1f7;
+            /* Active-Tile im LIGHT-Mode: sanftes Rot/Rosa */
+          --active-bg: #faacac;                /* ganz helles Rot */
+          --active-border: #ef4444;            /* Tailwind-rot-500 Style */
+          --active-shadow: 0 0 18px rgba(168, 10, 10, 0.75) inset;
+          /* Charts (Light) */
+          --chart-grid: rgba(0, 0, 0, 0.08);   /* Achsenlinien */
+          --chart-tick: #111827;               /* Achsenbeschriftung */
+          --chart-legend: #111827;             /* Legenden-Text */
+          --chart-bar: #3b82f6;                /* Balken, kräftiges Blau */
+          }
 
 
         /* Dark Theme – entspricht deinem bisherigen Look */
@@ -65,15 +65,15 @@
         box-sizing: border-box;
       }
 
-        body {
+      body {
         margin: 0;
         color: var(--fg);
         background: var(--bg);          /* hier hängt alles an --bg */
         font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, "Open Sans",
             "Helvetica Neue", Arial, sans-serif;
-        }
+      }
 
-        header {
+      header {
         position: sticky;
         top: 0;
         backdrop-filter: blur(8px);
@@ -85,12 +85,12 @@
         align-items: center;
         flex-direction: column;
         text-align: center;
-        }
+      }
 
         /* Light-Theme-Header */
-        :root:not([data-theme="dark"]) header {
+      :root:not([data-theme="dark"]) header {
         background: rgba(200, 200, 220, 0.75);
-        }
+      }
 
       header h1 {
         margin: 0;
