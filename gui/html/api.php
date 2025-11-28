@@ -281,57 +281,21 @@ try {
      FM Heatmap (Count by weekday + hour)
      q=fmheatmap
      ========================= */
-  if ($q === 'fmheatmap') {
-    $mode = $_GET['mode'] ?? 'all';
-    $sqlFilter = '';
-    $params = [];
+    if ($q === 'fmheatmap') {
+        // Daten kommen fertig aggregiert aus fmstats (letzte 7 Tage, 24x7)
+        $rows = $pdo->query("
+            SELECT
+              weekday,
+              hour,
+              COALESCE(qso_count, 0) AS count
+            FROM fmstats
+            WHERE metric = 'heatmap_week'
+            ORDER BY weekday, hour
+        ")->fetchAll(PDO::FETCH_ASSOC);
 
-    if ($mode === 'local') {
-      $tg = isset($_GET['tg']) ? (int)$_GET['tg'] : 0;
-      if ($tg > 0) {
-        $sqlFilter = " AND tg = :tg";
-        $params[':tg'] = $tg;
-      }
-    } elseif ($mode === 'monitored') {
-      $tgList = $_GET['tgs'] ?? '';
-      $tgNums = array_filter(
-        array_map(
-          static fn ($x) => (int)trim($x),
-          explode(',', (string)$tgList)
-        ),
-        static fn ($n) => $n > 0
-      );
-
-      if ($tgNums) {
-        $placeholders = [];
-        foreach ($tgNums as $idx => $tg) {
-          $ph = ":tg{$idx}";
-          $placeholders[] = $ph;
-          $params[$ph] = $tg;
-        }
-        $sqlFilter = " AND tg IN (" . implode(',', $placeholders) . ")";
-      }
+        echo json_encode($rows, JSON_UNESCAPED_UNICODE);
+        exit;
     }
-
-    $sql = "
-      SELECT
-        WEEKDAY(event_time) AS weekday,
-        HOUR(event_time)     AS hour,
-        COUNT(*)             AS count
-      FROM fmlastheard
-      WHERE talk = 'stop'
-      {$sqlFilter}
-      GROUP BY WEEKDAY(event_time), HOUR(event_time)
-      ORDER BY weekday, hour
-    ";
-
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute($params);
-    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-    echo json_encode($rows, JSON_UNESCAPED_UNICODE);
-    exit;
-  }
 
   /* =========================
      FM: Last Heard (nur talk = 'stop', inkl. Dauer + location)
@@ -447,66 +411,25 @@ try {
      Optional: mode=all|local|monitored, tg=NUM, tgs=1,2,3
      ========================= */
   if ($q === 'fm_callsignTop10Count') {
-    $mode = $_GET['mode'] ?? 'all';
-    $sqlFilter = '';
-    $params = [];
+      // Top 10 Callsigns nach QSO-Anzahl aus fmstats
+      $rows = $pdo->query("
+          SELECT
+            callsign,
+            COALESCE(qso_count, 0) AS cnt
+          FROM fmstats
+          WHERE metric = 'top_calls_qso'
+          ORDER BY rank ASC
+          LIMIT 10
+      ")->fetchAll(PDO::FETCH_ASSOC);
 
-    // --- Filter analog zu fmlastheard -----------------------------
-    if ($mode === 'local') {
-      $tg = isset($_GET['tg']) ? (int)$_GET['tg'] : 0;
-      if ($tg > 0) {
-        $sqlFilter = " AND s.tg = :tg";
-        $params[':tg'] = $tg;
+      foreach ($rows as &$r) {
+          $r['cnt'] = (int)($r['cnt'] ?? 0);
+          $r['country_code'] = prefix_to_country($r['callsign'] ?? null);
       }
-    } elseif ($mode === 'monitored') {
-      $tgList = $_GET['tgs'] ?? '';
-      $tgNums = array_filter(
-        array_map(
-          static fn ($x) => (int)trim($x),
-          explode(',', (string)$tgList)
-        ),
-        static fn ($n) => $n > 0
-      );
+      unset($r);
 
-      if ($tgNums) {
-        $placeholders = [];
-        foreach ($tgNums as $idx => $tg) {
-          $ph = ":tg{$idx}";
-          $placeholders[] = $ph;
-          $params[$ph] = $tg;
-        }
-        $sqlFilter = " AND s.tg IN (" . implode(',', $placeholders) . ")";
-      }
-    }
-
-    // --- eigentliche Auswertung -----------------------------------
-    // Wenn du nur einen Zeitraum willst, z.B. letzte 7 Tage, ergänze:
-    //   AND s.event_time >= (NOW() - INTERVAL 7 DAY)
-    $sql = "
-      SELECT
-        s.callsign,
-        COUNT(*) AS cnt
-      FROM fmlastheard s
-      WHERE s.talk = 'stop'
-      AND s.event_time >= (NOW() - INTERVAL 30 DAY)
-      {$sqlFilter}
-      GROUP BY s.callsign
-      HAVING cnt > 0
-      ORDER BY cnt DESC
-      LIMIT 10
-    ";
-
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute($params);
-    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-    foreach ($rows as &$r) {
-      $r['country_code'] = prefix_to_country($r['callsign'] ?? null);
-    }
-    unset($r);
-
-    echo json_encode($rows, JSON_UNESCAPED_UNICODE);
-    exit;
+      echo json_encode($rows, JSON_UNESCAPED_UNICODE);
+      exit;
   }
 
   /* =========================
@@ -515,165 +438,54 @@ try {
      Optional: mode=all|local|monitored, tg=NUM, tgs=1,2,3
      ========================= */
   if ($q === 'fm_callsignTop10Duration') {
-    $mode = $_GET['mode'] ?? 'all';
-    $sqlFilter = '';
-    $params = [];
+      // Top 10 Callsigns nach Gesamtdauer (Sekunden) aus fmstats
+      $rows = $pdo->query("
+          SELECT
+            callsign,
+            COALESCE(total_seconds, 0) AS sec
+          FROM fmstats
+          WHERE metric = 'top_calls_duration'
+          ORDER BY rank ASC
+          LIMIT 10
+      ")->fetchAll(PDO::FETCH_ASSOC);
 
-    // --- Filter analog zu fmlastheard / fm_callsignTop10Count -----
-    if ($mode === 'local') {
-      $tg = isset($_GET['tg']) ? (int)$_GET['tg'] : 0;
-      if ($tg > 0) {
-        $sqlFilter = " AND s.tg = :tg";
-        $params[':tg'] = $tg;
+      foreach ($rows as &$r) {
+          $r['sec'] = (float)($r['sec'] ?? 0.0);
+          $r['country_code'] = prefix_to_country($r['callsign'] ?? null);
       }
-    } elseif ($mode === 'monitored') {
-      $tgList = $_GET['tgs'] ?? '';
-      $tgNums = array_filter(
-        array_map(
-          static fn ($x) => (int)trim($x),
-          explode(',', (string)$tgList)
-        ),
-        static fn ($n) => $n > 0
-      );
+      unset($r);
 
-      if ($tgNums) {
-        $placeholders = [];
-        foreach ($tgNums as $idx => $tg) {
-          $ph = ":tg{$idx}";
-          $placeholders[] = $ph;
-          $params[$ph] = $tg;
-        }
-        $sqlFilter = " AND s.tg IN (" . implode(',', $placeholders) . ")";
-      }
-    }
-
-    // --- eigentliche Auswertung -----------------------------------
-    // analog zu fmlastheard: Dauer = Differenz zwischen passendem 'start' und 'stop'
-    $sql = "
-      SELECT
-        s.callsign,
-        SUM(
-          TIMESTAMPDIFF(
-            SECOND,
-            (
-              SELECT MAX(start.event_time)
-              FROM fmlastheard start
-              WHERE start.callsign   = s.callsign
-                AND start.tg         = s.tg
-                AND start.server     = s.server
-                AND start.talk       = 'start'
-                AND start.event_time <= s.event_time
-            ),
-            s.event_time
-          )
-        ) AS sec
-      FROM fmlastheard s
-      WHERE s.talk = 'stop'
-      AND s.event_time >= (NOW() - INTERVAL 30 DAY)
-      {$sqlFilter}
-      GROUP BY s.callsign
-      HAVING sec > 0
-      ORDER BY sec DESC
-      LIMIT 10
-    ";
-
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute($params);
-    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-    foreach ($rows as &$r) {
-      $r['country_code'] = prefix_to_country($r['callsign'] ?? null);
-    }
-    unset($r);
-
-    echo json_encode($rows, JSON_UNESCAPED_UNICODE);
-    exit;
+      echo json_encode($rows, JSON_UNESCAPED_UNICODE);
+      exit;
   }
+
 
     /* =========================
      FM: Hall of Fame – Top Callsigns der Monat (30 Tage)
      q=fm_hallOfFameWeek
      ========================= */
   if ($q === 'fm_hallOfFameWeek') {
-    $mode      = $_GET['mode'] ?? 'all';
-    $sqlFilter = '';
-    $params    = [];
-
-    if ($mode === 'local') {
-      $tg = isset($_GET['tg']) ? (int)$_GET['tg'] : 0;
-      if ($tg > 0) {
-        $sqlFilter = " AND s.tg = :tg";
-        $params[':tg'] = $tg;
-      }
-    } elseif ($mode === 'monitored') {
-      $tgList = $_GET['tgs'] ?? '';
-      $tgNums = array_filter(
-        array_map(
-          static fn($x) => (int)trim($x),
-          explode(',', (string)$tgList)
-        ),
-        static fn($n) => $n > 0
-      );
-
-      if ($tgNums) {
-        $placeholders = [];
-        foreach ($tgNums as $idx => $tg) {
-          $ph = ":tg{$idx}";
-          $placeholders[] = $ph;
-          $params[$ph] = $tg;
-        }
-        $sqlFilter = " AND s.tg IN (" . implode(',', $placeholders) . ")";
-      }
-    }
-
-    $sql = "
-      SELECT
-        inner_t.callsign,
-        inner_t.qso_count,
-        inner_t.total_sec,
-        (inner_t.total_sec + inner_t.qso_count * 10) AS score
-      FROM (
+    // Hall of Fame: Top-Calls nach Score aus fmstats
+    $rows = $pdo->query("
         SELECT
-          s.callsign,
-          COUNT(*) AS qso_count,
-          SUM(
-            TIMESTAMPDIFF(
-              SECOND,
-              (
-                SELECT MAX(start.event_time)
-                FROM fmlastheard start
-                WHERE start.callsign   = s.callsign
-                  AND start.tg         = s.tg
-                  AND start.server     = s.server
-                  AND start.talk       = 'start'
-                  AND start.event_time <= s.event_time
-              ),
-              s.event_time
-            )
-          ) AS total_sec
-        FROM fmlastheard s
-        WHERE s.talk = 'stop'
-          AND s.event_time >= (NOW() - INTERVAL 30 DAY)
-          {$sqlFilter}
-        GROUP BY s.callsign
-        HAVING qso_count > 0
-      ) AS inner_t
-      ORDER BY score DESC
-      LIMIT 10
-    ";
-
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute($params);
-    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+          callsign,
+          COALESCE(qso_count,     0) AS qso_count,
+          COALESCE(total_seconds, 0) AS total_sec,
+          COALESCE(score,         0) AS score
+        FROM fmstats
+        WHERE metric = 'top_calls_score'
+        ORDER BY rank ASC
+        LIMIT 10
+    ")->fetchAll(PDO::FETCH_ASSOC);
 
     foreach ($rows as &$r) {
-      $qso = (int)($r['qso_count'] ?? 0);
-      $tot = (float)($r['total_sec'] ?? 0.0);
-      $avg = ($qso > 0) ? ($tot / $qso) : 0.0;
-
-      $r['avg_sec']      = $avg;
-      $r['score']        = (float)($r['score'] ?? 0.0);
-      $r['country_code'] = prefix_to_country($r['callsign'] ?? null);
+        $qso = (int)($r['qso_count'] ?? 0);
+        $tot = (float)($r['total_sec'] ?? 0.0);
+        $r['qso_count']   = $qso;
+        $r['total_sec']   = $tot;
+        $r['score']       = (float)($r['score'] ?? 0.0);
+        $r['avg_sec']     = $qso > 0 ? $tot / $qso : 0.0;
+        $r['country_code'] = prefix_to_country($r['callsign'] ?? null);
     }
     unset($r);
 
@@ -686,51 +498,25 @@ try {
      q=fm_topTalkgroups
      Immer global (kein Filter nach Default/Monitor)
      ========================= */
-  if ($q === 'fm_topTalkgroups') {
+if ($q === 'fm_topTalkgroups') {
+    // Top Talkgroups nach Gesamtdauer aus fmstats
+    $rows = $pdo->query("
+        SELECT
+          tg,
+          COALESCE(qso_count,     0) AS cnt,
+          COALESCE(total_seconds, 0) AS total_sec
+        FROM fmstats
+        WHERE metric = 'top_tg_duration'
+        ORDER BY rank ASC
+        LIMIT 10
+    ")->fetchAll(PDO::FETCH_ASSOC);
 
-    // Wenn du es auf z.B. letzte 30 Tage begrenzen willst,
-    // ergänze unter WHERE s.talk = 'stop' noch:
-    //   AND s.event_time >= (NOW() - INTERVAL 30 DAY)
-
-    $sql = "
-      SELECT
-        s.tg,
-        COUNT(*) AS cnt,
-        SUM(
-          TIMESTAMPDIFF(
-            SECOND,
-            (
-              SELECT MAX(start.event_time)
-              FROM fmlastheard start
-              WHERE start.callsign   = s.callsign
-                AND start.tg         = s.tg
-                AND start.server     = s.server
-                AND start.talk       = 'start'
-                AND start.event_time <= s.event_time
-            ),
-            s.event_time
-          )
-        ) AS total_sec
-      FROM fmlastheard s
-      WHERE s.talk = 'stop'
-      AND s.event_time >= (NOW() - INTERVAL 90 DAY)
-      GROUP BY s.tg
-      HAVING cnt > 0
-      ORDER BY cnt DESC
-      LIMIT 10
-    ";
-
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute();
-    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-    // total_sec und cnt in Zahlen gießen + Ø-Dauer vorbereiten
     foreach ($rows as &$r) {
-      $cnt = (int)($r['cnt'] ?? 0);
-      $tot = (float)($r['total_sec'] ?? 0.0);
-      $r['cnt']       = $cnt;
-      $r['total_sec'] = $tot;
-      $r['avg_sec']   = $cnt > 0 ? $tot / $cnt : 0.0;
+        $cnt = (int)($r['cnt'] ?? 0);
+        $tot = (float)($r['total_sec'] ?? 0.0);
+        $r['cnt']       = $cnt;
+        $r['total_sec'] = $tot;
+        $r['avg_sec']   = $cnt > 0 ? $tot / $cnt : 0.0;
     }
     unset($r);
 

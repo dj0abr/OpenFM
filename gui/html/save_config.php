@@ -88,6 +88,7 @@ $expected = [
   'CTCSSRepeater',
   'TGDefault',
   'TGMonitored',
+  'RebootFlag',
 ];
 
 // einsammeln
@@ -172,6 +173,8 @@ $location   = $data['Location'] !== '' ? $data['Location'] : null;
 $locator    = $data['Locator']  !== '' ? strtoupper($data['Locator']) : null;
 $sysop      = $data['SYSOP']    !== '' ? $data['SYSOP'] : null;
 $website    = $data['URL']      !== '' ? $data['URL'] : null;
+// RebootFlag: '1' = Reboot angefordert, sonst 0
+$rebootRequested = ($data['RebootFlag'] === '1') ? 1 : 0;
 
 /* ======= DB-Speichern ======= */
 try {
@@ -196,7 +199,8 @@ try {
       RXFREQ,
       Website,
       nodeLocation,
-      CTCSS
+      CTCSS,
+      reboot_requested
     ) VALUES (
       1,
       :callsign,
@@ -212,24 +216,26 @@ try {
       :RXFREQ,
       :Website,
       :nodeLocation,
-      :CTCSS
+      :CTCSS,
+      :reboot_requested
     )
     ON DUPLICATE KEY UPDATE
-      callsign     = VALUES(callsign),
-      dns_domain   = VALUES(dns_domain),
-      default_tg   = VALUES(default_tg),
-      monitor_tgs  = VALUES(monitor_tgs),
-      Location     = VALUES(Location),
-      Locator      = VALUES(Locator),
-      SysOp        = VALUES(SysOp),
-      LAT          = VALUES(LAT),
-      LON          = VALUES(LON),
-      TXFREQ       = VALUES(TXFREQ),
-      RXFREQ       = VALUES(RXFREQ),
-      Website      = VALUES(Website),
-      nodeLocation = VALUES(nodeLocation),
-      CTCSS        = VALUES(CTCSS),
-      updated_at   = CURRENT_TIMESTAMP
+      callsign         = VALUES(callsign),
+      dns_domain       = VALUES(dns_domain),
+      default_tg       = VALUES(default_tg),
+      monitor_tgs      = VALUES(monitor_tgs),
+      Location         = VALUES(Location),
+      Locator          = VALUES(Locator),
+      SysOp            = VALUES(SysOp),
+      LAT              = VALUES(LAT),
+      LON              = VALUES(LON),
+      TXFREQ           = VALUES(TXFREQ),
+      RXFREQ           = VALUES(RXFREQ),
+      Website          = VALUES(Website),
+      nodeLocation     = VALUES(nodeLocation),
+      CTCSS            = VALUES(CTCSS),
+      reboot_requested = VALUES(reboot_requested),
+      updated_at       = CURRENT_TIMESTAMP
   ";
 
   $stmt = $pdo->prepare($sql);
@@ -248,6 +254,7 @@ try {
     ':Website'      => $website,
     ':nodeLocation' => $nodeLocation,
     ':CTCSS'        => $ctcssRepeater,
+    ':reboot_requested' => $rebootRequested,
   ]);
 
   // kleine Statistik: wie viele Felder waren nicht leer

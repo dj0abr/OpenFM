@@ -2052,12 +2052,13 @@
       // periodic refresh
       setInterval(loadFmStatus, 1000);
       setInterval(loadFmLastHeard, 3000);
-      // Charts müssen nicht so oft, 1x pro Minute reicht
-      setInterval(loadFmCallsignTop10Count, 60000);
-      setInterval(loadFmCallsignTop10Duration, 60000);
-      setInterval(loadFmHeatmap, 60000);
-      setInterval(loadFmHallOfFameWeek, 60000);
-      setInterval(loadFmTopTalkgroups, 60000);
+      // die php-Queries knallen die CPU zu 100% voll, daher müssen wir das im c++ Backend machen
+      // und nur mehr das Ergebnis abholen und anzeigen
+      setInterval(loadFmCallsignTop10Count, 10 * 60 * 1000);
+      setInterval(loadFmCallsignTop10Duration, 10 * 60 * 1000);
+      setInterval(loadFmHeatmap, 10 * 60 * 1000);
+      setInterval(loadFmHallOfFameWeek, 10 * 60 * 1000);
+      setInterval(loadFmTopTalkgroups, 10 * 60 * 1000);
 
     </script>
   </body>

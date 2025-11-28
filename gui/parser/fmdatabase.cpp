@@ -7,6 +7,12 @@
 #include <ctime>
 #include <sstream>
 #include <iomanip>
+#include <vector>
+#include <array>
+#include <unordered_map>
+#include <algorithm>
+#include <tuple>
+#include <cstdint>
 
 FMDatabase::FMDatabase()
 {
@@ -164,6 +170,7 @@ bool FMDatabase::ensureSchema() noexcept
         nodeLocation VARCHAR(255)  NULL,
         CTCSS        VARCHAR(64)   NULL,
         setup_password VARCHAR(255) NULL,
+        reboot_requested TINYINT(1)   NOT NULL DEFAULT 0,
         updated_at   TIMESTAMP     NOT NULL
                     DEFAULT CURRENT_TIMESTAMP
                     ON UPDATE CURRENT_TIMESTAMP
@@ -174,6 +181,35 @@ bool FMDatabase::ensureSchema() noexcept
     if (mysql_query(conn_, q4) != 0) {
         lastError_ = mysql_error(conn_);
         std::fprintf(stderr, "[FMDB] create config failed: %s\n", lastError_.c_str());
+        return false;
+    }
+
+    // fmstats: aggregierte Statistiken für GUI
+    static const char* q5 = R"SQL(
+        CREATE TABLE IF NOT EXISTS fmstats (
+          id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+          metric        VARCHAR(32) NOT NULL,   -- z.B. 'top_calls_qso', 'heatmap_week'
+          rank          TINYINT UNSIGNED NULL,  -- 1..10 für Top-Listen, sonst NULL
+          callsign      VARCHAR(32) NULL,
+          tg            INT NULL,
+          weekday       TINYINT UNSIGNED NULL,  -- 0=Mo .. 6=So (für heatmap)
+          hour          TINYINT UNSIGNED NULL,  -- 0..23 (für heatmap)
+          qso_count     BIGINT UNSIGNED NULL,
+          total_seconds DOUBLE NULL,
+          score         DOUBLE NULL,
+          metric_value  DOUBLE NULL,            -- generischer Wert (z.B. qso_count, Dauer, Score)
+          updated_at    TIMESTAMP NOT NULL
+                        DEFAULT CURRENT_TIMESTAMP
+                        ON UPDATE CURRENT_TIMESTAMP,
+          INDEX idx_metric (metric),
+          INDEX idx_metric_rank (metric, rank),
+          INDEX idx_metric_wh (metric, weekday, hour)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    )SQL";
+
+    if (mysql_query(conn_, q5) != 0) {
+        lastError_ = mysql_error(conn_);
+        std::fprintf(stderr, "[FMDB] create fmstats failed: %s\n", lastError_.c_str());
         return false;
     }
 
@@ -530,7 +566,7 @@ bool FMDatabase::getConfig(ConfigRow& out) noexcept
         "SELECT "
         "  id, callsign, dns_domain, default_tg, monitor_tgs, "
         "  Location, Locator, SysOp, LAT, LON, TXFREQ, RXFREQ, "
-        "  Website, nodeLocation, CTCSS, "
+        "  Website, nodeLocation, CTCSS, reboot_requested,"
         "  DATE_FORMAT(updated_at,'%Y-%m-%d %H:%i:%s') AS updated_at "
         "FROM config "
         "WHERE id=1 "
@@ -582,8 +618,560 @@ bool FMDatabase::getConfig(ConfigRow& out) noexcept
     out.Website     = row[12] ? row[12] : "";
     out.nodeLocation= row[13] ? row[13] : "";
     out.CTCSS       = row[14] ? row[14] : "";
-    out.updatedAt   = row[15] ? row[15] : "";
+    const int rebootRequestedInt = getInt(row[15], 0);
+    out.rebootRequested          = (rebootRequestedInt != 0);
+    out.updatedAt   = row[16] ? row[16] : "";
 
     mysql_free_result(res);
+
+    // Wenn ein Reboot angefordert ist: Flag sofort wieder löschen,
+    // damit wir es nur "einmal" sehen.
+    if (rebootRequestedInt != 0) {
+        const char* upd = "UPDATE config SET reboot_requested = 0 WHERE id = 1";
+        if (mysql_query(conn_, upd) != 0) {
+            lastError_ = mysql_error(conn_);
+            std::fprintf(stderr, "[FMDB] getConfig: clear reboot_requested failed: %s\n",
+                         lastError_.c_str());
+            // hier nicht false zurückgeben – Config ist trotzdem lesbar
+        }
+    }
+    
+    return true;
+}
+
+// ---------------- Statistik ----------------
+bool FMDatabase::parseDateTimeToTimeT(const char* s, std::time_t& out) noexcept
+{
+    if (!s) return false;
+
+    std::tm tm{};
+    tm.tm_isdst = -1;
+
+    std::istringstream iss(s);
+    iss >> std::get_time(&tm, "%Y-%m-%d %H:%M:%S");
+    if (iss.fail()) {
+        return false;
+    }
+
+    std::time_t t = std::mktime(&tm);
+    if (t == static_cast<std::time_t>(-1)) {
+        return false;
+    }
+
+    out = t;
+    return true;
+}
+
+bool FMDatabase::computeQsoAggregatesLast30Days(CallAggMap&   perCall,
+                                                TgAggMap&     perTg,
+                                                TgCountMap&   perTgCount,
+                                                FMQsoHeatmap& heatmapWeek) noexcept
+{
+    perCall.clear();
+    perTg.clear();
+    perTgCount.clear();
+
+    // Heatmap initialisieren
+    for (auto& day : heatmapWeek) {
+        day.fill(0);
+    }
+
+    if (!ensureConn()) {
+        std::fprintf(stderr, "[FMDB] computeQsoAggregatesLast30Days: no connection: %s\n",
+                     lastError_.c_str());
+        return false;
+    }
+
+    std::lock_guard<std::mutex> lock(mtx_);
+
+    std::ostringstream oss;
+    oss << "SELECT "
+           "DATE_FORMAT(event_time,'%Y-%m-%d %H:%i:%s') AS et, "
+           "talk, callsign, tg "
+           "FROM fmlastheard "
+           "WHERE event_time >= (NOW() - INTERVAL 30 DAY) "
+           "ORDER BY callsign, event_time, id";
+
+    if (mysql_query(conn_, oss.str().c_str()) != 0) {
+        lastError_ = mysql_error(conn_);
+        std::fprintf(stderr, "[FMDB] computeQsoAggregatesLast30Days query failed: %s\n",
+                     lastError_.c_str());
+        return false;
+    }
+
+    MYSQL_RES* res = mysql_store_result(conn_);
+    if (!res) {
+        lastError_ = mysql_error(conn_);
+        std::fprintf(stderr, "[FMDB] computeQsoAggregatesLast30Days store_result failed: %s\n",
+                     lastError_.c_str());
+        return false;
+    }
+
+    const std::time_t now          = std::time(nullptr);
+    const std::time_t sevenDaysAgo = now - 7 * 24 * 60 * 60;
+
+    std::string currentCall;
+    bool        hasOpenStart = false;
+    std::time_t currentStart = 0;
+    int         currentTg    = 0;
+
+    MYSQL_ROW row;
+    while ((row = mysql_fetch_row(res)) != nullptr) {
+        const char* etStr = row[0];
+        const char* talk  = row[1];
+        const char* call  = row[2];
+        const char* tgStr = row[3];
+
+        if (!etStr || !talk || !call || !tgStr) {
+            continue;
+        }
+
+        std::time_t t{};
+        if (!parseDateTimeToTimeT(etStr, t)) {
+            continue;
+        }
+
+        int tg = std::atoi(tgStr);
+
+        std::string callStr(call);
+        std::string talkStr(talk);
+
+        // bei neuem Callsign State zurücksetzen
+        if (callStr != currentCall) {
+            currentCall  = callStr;
+            hasOpenStart = false;
+        }
+
+        if (talkStr == "start") {
+            // mehrfaches start -> letztes gewinnt, alte werden ignoriert
+            currentStart  = t;
+            currentTg     = tg;
+            hasOpenStart  = true;
+        } else if (talkStr == "stop") {
+            if (!hasOpenStart) {
+                // stop ohne passendes start -> ignorieren
+                continue;
+            }
+
+            double dt = std::difftime(t, currentStart);
+            // QSOs < 5s ignorieren
+            if (dt < 5.0) {
+                hasOpenStart = false;
+                continue;
+            }
+
+            // Aggregation pro Callsign
+            auto& agg = perCall[currentCall];
+            agg.qsoCount     += 1;
+            agg.totalSeconds += dt;
+
+            // Aggregation pro TG
+            perTg[currentTg] += dt;
+            perTgCount[currentTg] += 1;
+
+            // Heatmap (nur QSOs mit Startzeit in letzter Woche)
+            if (currentStart >= sevenDaysAgo) {
+                std::tm tm{};
+                localtime_r(&currentStart, &tm);
+
+                int hour = tm.tm_hour;          // 0..23
+                int wday = tm.tm_wday;          // 0=Sonntag..6=Samstag
+
+                // auf 0=Montag..6=Sonntag umbiegen
+                int weekdayIndex = (wday == 0) ? 6 : (wday - 1);
+
+                if (weekdayIndex >= 0 && weekdayIndex < 7 &&
+                    hour >= 0 && hour < 24) {
+                    heatmapWeek[weekdayIndex][hour] += 1;
+                }
+            }
+
+            hasOpenStart = false;
+        }
+    }
+
+    mysql_free_result(res);
+    return true;
+}
+
+std::vector<FMCallQsoCount>
+FMDatabase::makeTop10ByQsoCount(const CallAggMap& perCall) const
+{
+    std::vector<FMCallQsoCount> result;
+    result.reserve(perCall.size());
+
+    for (const auto& kv : perCall) {
+        FMCallQsoCount e;
+        e.callsign = kv.first;
+        e.qsoCount = kv.second.qsoCount;
+        result.push_back(std::move(e));
+    }
+
+    std::sort(result.begin(), result.end(),
+              [](const FMCallQsoCount& a, const FMCallQsoCount& b) {
+                  return a.qsoCount > b.qsoCount;
+              });
+
+    if (result.size() > 10) result.resize(10);
+    return result;
+}
+
+std::vector<FMCallDuration>
+FMDatabase::makeTop10ByDuration(const CallAggMap& perCall) const
+{
+    std::vector<FMCallDuration> result;
+    result.reserve(perCall.size());
+
+    for (const auto& kv : perCall) {
+        FMCallDuration e;
+        e.callsign     = kv.first;
+        e.totalSeconds = kv.second.totalSeconds;
+        result.push_back(std::move(e));
+    }
+
+    std::sort(result.begin(), result.end(),
+              [](const FMCallDuration& a, const FMCallDuration& b) {
+                  return a.totalSeconds > b.totalSeconds;
+              });
+
+    if (result.size() > 10) result.resize(10);
+    return result;
+}
+
+std::vector<FMCallScore>
+FMDatabase::makeTop10ByScore(const CallAggMap& perCall) const
+{
+    std::vector<FMCallScore> result;
+    result.reserve(perCall.size());
+
+    for (const auto& kv : perCall) {
+        FMCallScore e;
+        e.callsign     = kv.first;
+        e.qsoCount     = kv.second.qsoCount;
+        e.totalSeconds = kv.second.totalSeconds;
+        e.score        = (e.qsoCount * e.totalSeconds) / 100.0;
+        result.push_back(std::move(e));
+    }
+
+    std::sort(result.begin(), result.end(),
+              [](const FMCallScore& a, const FMCallScore& b) {
+                  return a.score > b.score;
+              });
+
+    if (result.size() > 10) result.resize(10);
+    return result;
+}
+
+std::vector<FMTgDuration>
+FMDatabase::makeTop10TgByDuration(const TgAggMap& perTg,
+                                  const TgCountMap& perTgCount) const
+{
+    std::vector<FMTgDuration> result;
+    result.reserve(perTg.size());
+
+    for (const auto& kv : perTg) {
+        int tg          = kv.first;
+        double totalSec = kv.second;
+
+        std::uint64_t cnt = 0;
+        if (auto it = perTgCount.find(tg); it != perTgCount.end()) {
+            cnt = it->second;
+        }
+
+        FMTgDuration e;
+        e.tg           = tg;
+        e.totalSeconds = totalSec;
+        e.qsoCount     = cnt;    // <--- hier wird qsoCount gesetzt
+        result.push_back(std::move(e));
+    }
+
+    std::sort(result.begin(), result.end(),
+              [](const FMTgDuration& a, const FMTgDuration& b) {
+                  return a.totalSeconds > b.totalSeconds;
+              });
+
+    if (result.size() > 10) result.resize(10);
+    return result;
+}
+
+void FMDatabase::statistics() noexcept
+{
+    // Nur alle 10 Minuten neu berechnen
+    using Clock = std::chrono::steady_clock;
+    static Clock::time_point lastRun;
+    static bool hasLastRun = false;
+
+    Clock::time_point now = Clock::now();
+    if (hasLastRun) {
+        auto diff = std::chrono::duration_cast<std::chrono::minutes>(now - lastRun);
+        if (diff < std::chrono::minutes(10)) {
+            // Letzte Berechnung ist noch keine 10 Minuten her -> ignorieren
+            return;
+        }
+    }
+
+    hasLastRun = true;
+    lastRun = now;
+
+    CallAggMap   perCall;
+    TgAggMap     perTg;
+    TgCountMap   perTgCount;
+    FMQsoHeatmap heatmapWeek;
+
+    if (!computeQsoAggregatesLast30Days(perCall, perTg, perTgCount, heatmapWeek)) {
+        std::fprintf(stderr, "[FMDB] statistics: computeQsoAggregatesLast30Days failed: %s\n",
+                     lastError_.c_str());
+        return;
+    }
+
+    // 1–4: Top-Listen bilden
+    auto topCallsByCount    = makeTop10ByQsoCount(perCall);
+    auto topCallsByDuration = makeTop10ByDuration(perCall);
+    auto topCallsByScore    = makeTop10ByScore(perCall);
+    auto topTgByDuration    = makeTop10TgByDuration(perTg, perTgCount);
+
+    // Ergebnisse in fmstats schreiben
+    if (!writeStatisticsToDb(topCallsByCount,
+                             topCallsByDuration,
+                             topCallsByScore,
+                             topTgByDuration,
+                             heatmapWeek)) {
+        std::fprintf(stderr, "[FMDB] statistics: writeStatisticsToDb failed: %s\n",
+                     lastError_.c_str());
+    }
+}
+
+bool FMDatabase::writeStatisticsToDb(const std::vector<FMCallQsoCount>& topCallsByCount,
+                                     const std::vector<FMCallDuration>& topCallsByDuration,
+                                     const std::vector<FMCallScore>&   topCallsByScore,
+                                     const std::vector<FMTgDuration>&  topTgByDuration,
+                                     const FMQsoHeatmap&               heatmapWeek) noexcept
+{
+    if (!ensureConn()) {
+        std::fprintf(stderr, "[FMDB] writeStatisticsToDb: no connection: %s\n",
+                     lastError_.c_str());
+        return false;
+    }
+
+    std::lock_guard<std::mutex> lock(mtx_);
+
+    auto execSimple = [&](const char* q) -> bool {
+        if (mysql_query(conn_, q) != 0) {
+            lastError_ = mysql_error(conn_);
+            std::fprintf(stderr, "[FMDB] writeStatisticsToDb query failed: %s\n",
+                         lastError_.c_str());
+            return false;
+        }
+        return true;
+    };
+
+    if (!execSimple("START TRANSACTION")) {
+        return false;
+    }
+
+    if (!execSimple("DELETE FROM fmstats")) {
+        execSimple("ROLLBACK");
+        return false;
+    }
+
+    auto insertRow =
+        [&](const std::string& metric,
+            int                rank,
+            const std::string* callsign,
+            const int*         tg,
+            const int*         weekday,
+            const int*         hour,
+            const std::uint64_t* qsoCount,
+            const double*      totalSeconds,
+            const double*      score,
+            const double*      value) -> bool
+    {
+        std::ostringstream oss;
+        oss << "INSERT INTO fmstats "
+               "(metric, rank, callsign, tg, weekday, hour, "
+               " qso_count, total_seconds, score, metric_value) VALUES (";
+
+        // metric
+        oss << "'" << escape(metric) << "',";
+
+        // rank
+        if (rank >= 0) oss << rank;
+        else           oss << "NULL";
+        oss << ",";
+
+        // callsign
+        if (callsign) oss << "'" << escape(*callsign) << "'";
+        else          oss << "NULL";
+        oss << ",";
+
+        // tg
+        if (tg) oss << *tg;
+        else    oss << "NULL";
+        oss << ",";
+
+        // weekday
+        if (weekday) oss << *weekday;
+        else         oss << "NULL";
+        oss << ",";
+
+        // hour
+        if (hour) oss << *hour;
+        else      oss << "NULL";
+        oss << ",";
+
+        // qso_count
+        if (qsoCount) oss << static_cast<unsigned long long>(*qsoCount);
+        else          oss << "NULL";
+        oss << ",";
+
+        // total_seconds
+        if (totalSeconds) oss << *totalSeconds;
+        else              oss << "NULL";
+        oss << ",";
+
+        // score
+        if (score) oss << *score;
+        else       oss << "NULL";
+        oss << ",";
+
+        // metric_value
+        if (value) oss << *value;
+        else       oss << "NULL";
+
+        oss << ")";
+
+        if (mysql_query(conn_, oss.str().c_str()) != 0) {
+            lastError_ = mysql_error(conn_);
+            std::fprintf(stderr, "[FMDB] writeStatisticsToDb INSERT failed: %s\n",
+                         lastError_.c_str());
+            return false;
+        }
+        return true;
+    };
+
+    // 1) Top 10 Callsigns nach QSO-Anzahl
+    for (std::size_t i = 0; i < topCallsByCount.size(); ++i) {
+        const auto& e = topCallsByCount[i];
+        int rank      = static_cast<int>(i + 1);
+        std::uint64_t qso = e.qsoCount;
+        double value  = static_cast<double>(qso);
+
+        if (!insertRow("top_calls_qso",
+                       rank,
+                       &e.callsign,
+                       nullptr,
+                       nullptr,
+                       nullptr,
+                       &qso,
+                       nullptr,
+                       nullptr,
+                       &value)) {
+            execSimple("ROLLBACK");
+            return false;
+        }
+    }
+
+    // 2) Top 10 Callsigns nach Gesamtdauer (Sekunden)
+    for (std::size_t i = 0; i < topCallsByDuration.size(); ++i) {
+        const auto& e = topCallsByDuration[i];
+        int rank      = static_cast<int>(i + 1);
+        double total  = e.totalSeconds;
+        double value  = total;
+
+        if (!insertRow("top_calls_duration",
+                       rank,
+                       &e.callsign,
+                       nullptr,
+                       nullptr,
+                       nullptr,
+                       nullptr,
+                       &total,
+                       nullptr,
+                       &value)) {
+            execSimple("ROLLBACK");
+            return false;
+        }
+    }
+
+    // 3) Top 10 Callsigns nach Score
+    for (std::size_t i = 0; i < topCallsByScore.size(); ++i) {
+        const auto& e = topCallsByScore[i];
+        int rank      = static_cast<int>(i + 1);
+        std::uint64_t qso = e.qsoCount;
+        double total  = e.totalSeconds;
+        double sc     = e.score;
+        double value  = sc;
+
+        if (!insertRow("top_calls_score",
+                       rank,
+                       &e.callsign,
+                       nullptr,
+                       nullptr,
+                       nullptr,
+                       &qso,
+                       &total,
+                       &sc,
+                       &value)) {
+            execSimple("ROLLBACK");
+            return false;
+        }
+    }
+
+    // 4) Top 10 TG nach Dauer
+    for (std::size_t i = 0; i < topTgByDuration.size(); ++i) {
+        const auto& e = topTgByDuration[i];
+        int rank      = static_cast<int>(i + 1);
+        int tg        = e.tg;
+        double total  = e.totalSeconds;
+        double value  = total;
+
+        // NEU: QSO-Anzahl für diese TG
+        std::uint64_t qso = e.qsoCount;
+
+        if (!insertRow("top_tg_duration",
+                    rank,          // rank
+                    nullptr,       // callsign
+                    &tg,           // tg
+                    nullptr,       // weekday
+                    nullptr,       // hour
+                    &qso,          // qso_count
+                    &total,        // total_seconds
+                    nullptr,       // score
+                    &value)) {     // metric_value (hier = total)
+            execSimple("ROLLBACK");
+            return false;
+        }
+    }
+
+    // 5) Heatmap 24 x 7 (Anzahl QSOs pro Stunde, letzte Woche)
+    // weekday: 0=Mo..6=So, hour: 0..23
+    for (int wd = 0; wd < 7; ++wd) {
+        for (int h = 0; h < 24; ++h) {
+            std::uint64_t cnt = heatmapWeek[wd][h];
+            double value      = static_cast<double>(cnt);
+            int weekday       = wd;
+            int hour          = h;
+
+            if (!insertRow("heatmap_week",
+                           -1,         // kein Ranking
+                           nullptr,
+                           nullptr,
+                           &weekday,
+                           &hour,
+                           &cnt,
+                           nullptr,
+                           nullptr,
+                           &value)) {
+                execSimple("ROLLBACK");
+                return false;
+            }
+        }
+    }
+
+    if (!execSimple("COMMIT")) {
+        execSimple("ROLLBACK");
+        return false;
+    }
+
     return true;
 }

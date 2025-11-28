@@ -8,7 +8,10 @@
 #include <sstream>
 #include <vector>
 #include <cstdlib>
-
+#include <thread>    // std::thread
+#include <chrono>    // std::chrono::seconds, std::this_thread::sleep_for
+#include <cstdlib>   // std::system
+#include <unistd.h>  // ::sync()
 
 NodeInfoWriter::NodeInfoWriter(const std::string& outputPath)
     : outputPath_(outputPath),
@@ -30,11 +33,27 @@ void NodeInfoWriter::tick()
     updateIfNeeded();
 }
 
+bool rebootInProgress = false;
+
 void NodeInfoWriter::updateIfNeeded()
 {
     FMDatabase::ConfigRow cfg;
     if (!db_.getConfig(cfg)) {
         return;
+    }
+
+    // führe einen reboot aus, falls angefordert
+    if (cfg.rebootRequested && !rebootInProgress) {
+        rebootInProgress = true;
+
+        std::fprintf(stderr, "[MAIN] Reboot requested via config table – rebooting...\n");
+
+        // optional: in eigenen Thread, falls du den Main-Loop "sauber" beenden willst
+        std::thread([]{
+            ::sync();
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+            std::system("sudo /usr/sbin/shutdown -r now");
+        }).detach();
     }
 
     // svxlink.conf aktualisieren

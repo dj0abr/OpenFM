@@ -4,6 +4,35 @@
 #include <string>
 #include <mysql/mysql.h>
 #include <mutex>
+#include <vector>
+#include <array>
+#include <cstdint>
+#include <unordered_map>
+
+struct FMCallQsoCount {
+    std::string   callsign;
+    std::uint64_t qsoCount;
+};
+
+struct FMCallDuration {
+    std::string callsign;
+    double      totalSeconds;
+};
+
+struct FMCallScore {
+    std::string   callsign;
+    std::uint64_t qsoCount;
+    double        totalSeconds;
+    double        score;
+};
+
+struct FMTgDuration {
+    int    tg  = 0;
+    std::uint64_t qsoCount = 0;
+    double totalSeconds = 0.0;
+};
+
+using FMQsoHeatmap = std::array<std::array<std::uint32_t, 24>, 7>; // [weekday][hour], weekday: 0=Mo..6=So
 
 class FMDatabase {
 public:
@@ -34,6 +63,9 @@ public:
                       int defaultTg,
                       const std::string& monitorTgs) noexcept;
 
+    // Haupt-Statistikfunktion, aus main loop aufrufbar
+    void statistics() noexcept;
+
     // Struktur für die config-Zeile
     struct ConfigRow {
         int         id = 0;
@@ -54,6 +86,8 @@ public:
         std::string CTCSS;
 
         std::string updatedAt; // "YYYY-MM-DD HH:MM:SS"
+
+        bool rebootRequested = false;
     };
 
     // NEU: config lesen (id=1)
@@ -91,4 +125,43 @@ private:
     const std::string dbName_       = "mmdvmdb";
     const std::string dbUnixSocket_ = "/run/mysqld/mysqld.sock";
     const unsigned int dbPort_      = 0; // 0 = über Unix-Socket
+
+    // für die Statistik
+    // Aggregation der QSOs der letzten 30 Tage
+    struct CallAggregate {
+        std::uint64_t qsoCount     = 0;
+        double        totalSeconds = 0.0;
+    };
+
+    using CallAggMap = std::unordered_map<std::string, CallAggregate>;
+    using TgAggMap   = std::unordered_map<int, double>;
+    using TgCountMap = std::unordered_map<int, std::uint64_t>;
+
+    bool computeQsoAggregatesLast30Days(CallAggMap&   perCall,
+                                    TgAggMap&     perTg,
+                                    TgCountMap&   perTgCount,
+                                    FMQsoHeatmap& heatmapWeek) noexcept;
+
+    std::vector<FMCallQsoCount>
+    makeTop10ByQsoCount(const CallAggMap& perCall) const;
+
+    std::vector<FMCallDuration>
+    makeTop10ByDuration(const CallAggMap& perCall) const;
+
+    std::vector<FMCallScore>
+    makeTop10ByScore(const CallAggMap& perCall) const;
+
+    std::vector<FMTgDuration>
+    makeTop10TgByDuration(const TgAggMap& perTg,
+                          const TgCountMap& perTgCount) const;
+
+
+    // kleiner Helper für DATETIME → time_t
+    static bool parseDateTimeToTimeT(const char* s, std::time_t& out) noexcept;
+
+    bool writeStatisticsToDb(const std::vector<FMCallQsoCount>& topCallsByCount,
+                             const std::vector<FMCallDuration>& topCallsByDuration,
+                             const std::vector<FMCallScore>&   topCallsByScore,
+                             const std::vector<FMTgDuration>&  topTgByDuration,
+                             const FMQsoHeatmap&               heatmapWeek) noexcept;
 };

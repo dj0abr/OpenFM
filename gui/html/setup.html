@@ -312,7 +312,7 @@
       <!-- TILE: ACTIONS -->
       <section class="tile center actions-tile">
         <h2>Actions</h2>
-
+        <input type="hidden" id="RebootFlag" name="RebootFlag" value="0" />
         <div class="actions-wrap">
           <!-- Links: Passwortfeld -->
           <div class="field">
@@ -331,6 +331,7 @@
           <div class="actions-right">
             <span id="formState" class="badge">ready</span>
             <button class="primary" id="saveBtn" type="submit">💾 Save and Exit</button>
+            <button class="primary" id="restartBtn" type="button">🔁 Restart</button>
           </div>
         </div>
 
@@ -525,6 +526,38 @@
       });
     })();
 
+    // Restart-Button: RestartFlag setzen und Formular abschicken
+    (function() {
+      const rebootField = document.getElementById('RebootFlag');
+      const saveBtn     = document.getElementById('saveBtn');
+      const restartBtn  = document.getElementById('restartBtn');
+
+      if (!rebootField) return;
+
+      if (saveBtn) {
+        saveBtn.addEventListener('click', () => {
+          // Normales Speichern → kein Reboot
+          rebootField.value = '0';
+        });
+      }
+
+      if (restartBtn) {
+        restartBtn.addEventListener('click', () => {
+          // Sicherheitsabfrage
+          const ok = confirm("Are you sure you want to restart OpenFM now?");
+          if (!ok) {
+            // User hat abgebrochen → nichts tun
+            return;
+          }
+
+          // Restart angefordert
+          rebootField.value = '1';
+          // Formular wie bei Submit abschicken
+          form.requestSubmit();
+        });
+      }
+    })();
+
     form.addEventListener('submit', async (e)=>{
       e.preventDefault();
       if (!validate()){
@@ -550,10 +583,17 @@
         const data = await r.json().catch(()=>null);
 
         if (r.ok && data && data.ok){
-          state.textContent = 'saved';
+          const rebootField = document.getElementById('RebootFlag');
+          const rebootRequested = rebootField && rebootField.value === '1';
+
+          state.textContent = rebootRequested ? 'saved (restart requested)' : 'saved';
           state.style.color = '#5cff89';
           msg.innerHTML = `<span class="ok">OK – server accepted configuration data.</span>`;
-          showSnack('Configuration saved', true);
+          showSnack(
+            rebootRequested ? 'Configuration saved – system will restart' : 'Configuration saved',
+            true
+          );
+          
           try { localStorage.setItem('openfm:cfg_saved', String(Date.now())); } catch {}
 
           setTimeout(() => {

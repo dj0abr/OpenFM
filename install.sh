@@ -48,11 +48,13 @@ make -j 4
 # set file permissions
 chown svxlink:svxlink /etc/svxlink/node_info.json
 chown svxlink:svxlink /etc/svxlink/svxlink.conf
-# allow user svxlink to restart the service
+
+# allow user svxlink to restart the service AND reboot the system
 SYSTEMCTL_BIN="$(command -v systemctl || echo /usr/bin/systemctl)"
+SHUTDOWN_BIN="$(command -v shutdown || echo /usr/sbin/shutdown)"
 TMP_FILE="$(mktemp)"
 cat >"$TMP_FILE" <<EOF
-svxlink ALL=(root) NOPASSWD: $SYSTEMCTL_BIN restart svxlink.service
+svxlink ALL=(root) NOPASSWD: $SYSTEMCTL_BIN restart svxlink.service, $SHUTDOWN_BIN -r now
 EOF
 visudo -cf "$TMP_FILE"
 install -o root -g root -m 440 "$TMP_FILE" /etc/sudoers.d/svxlink-service
